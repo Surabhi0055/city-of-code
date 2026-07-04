@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
@@ -201,15 +202,34 @@ export default function Home() {
 
       {/* 3D Canvas */}
       <Canvas
-        camera={{ position: [60, 50, 60], fov: 60 }}
-        gl={{ antialias: true }}
+        camera={{ position: [120, 90, 120], fov: 50 }}
+        gl={{
+          antialias: true,
+          toneMapping: THREE.ACESFilmicToneMapping,
+          powerPreference: "high-performance",
+        }}
       >
-        <ambientLight intensity={0.8} color="#223366" />
-        <pointLight position={[0, 50, 0]} color="#ffffff" intensity={3} />
-        <pointLight position={[50, 30, 50]} color="#00ffff" intensity={2} />
-        <pointLight position={[-50, 30, 50]} color="#ff00ff" intensity={2} />
-        <pointLight position={[50, 30, -50]} color="#ffff00" intensity={1.5} />
-        <CyberCity />
+        {/* Lighting — brighter so buildings and roads are clearly visible */}
+        <ambientLight intensity={3} color="#1a1a3a" />
+        <directionalLight position={[50, 80, 50]} color="#ffffff" intensity={2} />
+        <pointLight position={[0, 40, 0]}    color="#00ffff" intensity={5} distance={300} />
+        <pointLight position={[80, 30, 80]}  color="#ff00ff" intensity={3} distance={200} />
+        <pointLight position={[-30, 30, 80]} color="#4400ff" intensity={2} distance={200} />
+
+        {(() => {
+          if (buildings.length === 0) {
+            return <CyberCity gridSize={80} buildings={[]} />;
+          }
+          let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+          buildings.forEach(b => {
+            if (b.x - b.width / 2 < minX) minX = b.x - b.width / 2;
+            if (b.x + b.width / 2 > maxX) maxX = b.x + b.width / 2;
+            if (b.z - b.depth / 2 < minZ) minZ = b.z - b.depth / 2;
+            if (b.z + b.depth / 2 > maxZ) maxZ = b.z + b.depth / 2;
+          });
+          const gridSize = Math.max(maxX - minX, maxZ - minZ) + 20;
+          return <CyberCity gridSize={gridSize} buildings={buildings} />;
+        })()}
         <CityBuildings
           buildings={buildings}
           onBuildingClick={setSelectedBuilding}

@@ -12,7 +12,6 @@ export interface RepoData {
 }
 
 // Parses a GitHub URL into owner + repo name
-// "https://github.com/facebook/react" → { owner: "facebook", repo: "react" }
 export function parseGitHubUrl(
   url: string,
 ): { owner: string; repo: string } | null {
@@ -56,7 +55,7 @@ export async function fetchRepoData(
   const files: GitHubFile[] = data.tree
     .filter((item: GitHubFile) => item.type === "blob" && item.size > 0)
     .sort((a: GitHubFile, b: GitHubFile) => b.size - a.size) // biggest files first
-    .slice(0, 500); // ← raised to 500
+    .slice(0, 200); // ← 200 is the sweet spot for M1
 
   return { owner, repo, files };
 }
