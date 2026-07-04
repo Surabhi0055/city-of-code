@@ -13,3 +13,7 @@ body {
   overflow: hidden;
   background-color: #0a0a0f;
 }
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
