@@ -13,18 +13,25 @@ export interface BuildingData {
 }
 
 const FILE_COLORS: Record<string, string> = {
-  ".ts": "#00ffff", // cyan    — TypeScript
-  ".tsx": "#00ccff", // light blue — React TypeScript
-  ".js": "#ffff00", // yellow  — JavaScript
-  ".jsx": "#ffcc00", // gold    — React JavaScript
-  ".css": "#ff00ff", // magenta — Styles
-  ".scss": "#ff44ff", // pink    — Sass
-  ".json": "#00ff88", // green   — Config
-  ".md": "#ffffff", // white   — Docs
-  ".html": "#ff6600", // orange  — HTML
-  ".py": "#4444ff", // blue    — Python
-  ".go": "#00ffaa", // teal    — Go
-  ".rs": "#ff4400", // red     — Rust
+  ".ts":    "#00ffff",   // electric cyan
+  ".tsx":   "#00eeff",   // bright sky blue
+  ".js":    "#ffee00",   // neon yellow
+  ".jsx":   "#ffcc00",   // gold
+  ".css":   "#ff00ff",   // hot magenta
+  ".scss":  "#ff44ff",   // neon pink
+  ".json":  "#00ff88",   // matrix green
+  ".md":    "#aaaaff",   // soft purple-white
+  ".html":  "#ff6600",   // neon orange
+  ".py":    "#4488ff",   // electric blue
+  ".go":    "#00ffcc",   // aqua
+  ".rs":    "#ff3300",   // neon red
+  ".yml":   "#ffaa00",   // amber
+  ".yaml":  "#ffaa00",   // amber
+  ".env":   "#ff0055",   // danger red-pink
+  ".sh":    "#44ff44",   // terminal green
+  ".svg":   "#ff88ff",   // lavender
+  ".png":   "#ff88aa",   // rose
+  ".jpg":   "#ff6688",   // coral
 };
 
 function getFileColor(fileName: string): string {
@@ -41,36 +48,64 @@ function getFileHeight(size: number): number {
 export function buildCityLayout(files: GitHubFile[]): BuildingData[] {
   const buildings: BuildingData[] = [];
 
-  // Group files by their top-level folder
   const districts = new Map<string, GitHubFile[]>();
-
   files.forEach((file) => {
     const parts = file.path.split("/");
     const folder = parts.length > 1 ? parts[0] : "root";
-
-    if (!districts.has(folder)) {
-      districts.set(folder, []);
-    }
+    if (!districts.has(folder)) districts.set(folder, []);
     districts.get(folder)!.push(file);
   });
 
-  // Place each district on the grid
-  let districtX = 0;
+  // Sort districts by size (largest first)
+  const districtList = Array.from(districts.entries()).sort(
+    (a, b) => b[1].length - a[1].length
+  );
+  
+  const numDistricts = districtList.length;
+  if (numDistricts === 0) return buildings;
 
-  districts.forEach((districtFiles, folderName) => {
-    let col = 0;
-    let row = 0;
-    const BUILDINGS_PER_ROW = 6;
-    const BUILDING_SPACING = 3;
-    const DISTRICT_SPACING = 8;
+  // Grid math for districts
+  const DISTRICTS_PER_ROW = Math.ceil(Math.sqrt(numDistricts));
+  const largestDistrictSize = districtList[0][1].length;
+  const BUILDINGS_PER_ROW = Math.ceil(Math.sqrt(largestDistrictSize));
+  
+  const BUILDING_SPACING = 4.5;
+  const DISTRICT_GAP = 15;
 
-    districtFiles.forEach((file) => {
-      const x = districtX + col * BUILDING_SPACING;
-      const z = row * BUILDING_SPACING;
+  // Calculate the "city block" size that every district gets
+  const maxDistrictW = BUILDINGS_PER_ROW * BUILDING_SPACING + DISTRICT_GAP;
+  const maxDistrictD = Math.ceil(largestDistrictSize / BUILDINGS_PER_ROW) * BUILDING_SPACING + DISTRICT_GAP;
+
+  const totalCityW = DISTRICTS_PER_ROW * maxDistrictW;
+  const totalCityD = Math.ceil(numDistricts / DISTRICTS_PER_ROW) * maxDistrictD;
+
+  const offsetX = -totalCityW / 2;
+  const offsetZ = -totalCityD / 2;
+
+  districtList.forEach(([folderName, districtFiles], districtIndex) => {
+    const districtCol = districtIndex % DISTRICTS_PER_ROW;
+    const districtRow = Math.floor(districtIndex / DISTRICTS_PER_ROW);
+
+    const districtOriginX = offsetX + districtCol * maxDistrictW + (maxDistrictW / 2);
+    const districtOriginZ = offsetZ + districtRow * maxDistrictD + (maxDistrictD / 2);
+
+    // Center the buildings inside their own district block
+    const districtActualW = Math.min(districtFiles.length, BUILDINGS_PER_ROW) * BUILDING_SPACING;
+    const districtActualD = Math.ceil(districtFiles.length / BUILDINGS_PER_ROW) * BUILDING_SPACING;
+
+    const startX = districtOriginX - districtActualW / 2;
+    const startZ = districtOriginZ - districtActualD / 2;
+
+    districtFiles.forEach((file, i) => {
+      const col = i % BUILDINGS_PER_ROW;
+      const row = Math.floor(i / BUILDINGS_PER_ROW);
+
+      const x = startX + col * BUILDING_SPACING;
+      const z = startZ + row * BUILDING_SPACING;
       const fileName = file.path.split("/").pop() ?? file.path;
 
       buildings.push({
-        id: file.sha,
+        id: file.path,
         x,
         z,
         height: getFileHeight(file.size),
@@ -80,18 +115,7 @@ export function buildCityLayout(files: GitHubFile[]): BuildingData[] {
         fileSize: file.size,
         folderName,
       });
-
-      col++;
-      if (col >= BUILDINGS_PER_ROW) {
-        col = 0;
-        row++;
-      }
     });
-
-    // Move to next district — width of current district + gap
-    const districtWidth =
-      Math.min(districtFiles.length, BUILDINGS_PER_ROW) * BUILDING_SPACING;
-    districtX += districtWidth + DISTRICT_SPACING;
   });
 
   return buildings;

@@ -6,15 +6,15 @@ import CityGrid from "./CityGrid";
 export default function CyberCity() {
   return (
     <>
-      <fog attach="fog" args={["#050510", 40, 160]} />
+      <fog attach="fog" args={["#0a0a0f", 60, 300]} />
       <OrbitControls
         enablePan={true}
         enableZoom={true}
         enableRotate={true}
-        minDistance={5}
-        maxDistance={120}
+        minDistance={3}
+        maxDistance={200}
         maxPolarAngle={Math.PI / 2.2}
-        target={[30, 0, 15]}
+        target={[30, 0, 30]}
       />
       <CityGrid />
     </>

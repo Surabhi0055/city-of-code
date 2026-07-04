@@ -55,7 +55,8 @@ export async function fetchRepoData(
 
   const files: GitHubFile[] = data.tree
     .filter((item: GitHubFile) => item.type === "blob" && item.size > 0)
-    .slice(0, 300); // ← cap at 300 buildings max
+    .sort((a: GitHubFile, b: GitHubFile) => b.size - a.size) // biggest files first
+    .slice(0, 500); // ← raised to 500
 
   return { owner, repo, files };
 }

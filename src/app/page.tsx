@@ -201,12 +201,14 @@ export default function Home() {
 
       {/* 3D Canvas */}
       <Canvas
-        camera={{ position: [40, 30, 40], fov: 60 }}
+        camera={{ position: [60, 50, 60], fov: 60 }}
         gl={{ antialias: true }}
       >
-        <ambientLight intensity={0.3} color="#111133" />
-        <pointLight position={[0, 20, 0]} color="#00ffff" intensity={2} />
-        <pointLight position={[30, 30, 30]} color="#ffffff" intensity={1.5} />
+        <ambientLight intensity={0.8} color="#223366" />
+        <pointLight position={[0, 50, 0]} color="#ffffff" intensity={3} />
+        <pointLight position={[50, 30, 50]} color="#00ffff" intensity={2} />
+        <pointLight position={[-50, 30, 50]} color="#ff00ff" intensity={2} />
+        <pointLight position={[50, 30, -50]} color="#ffff00" intensity={1.5} />
         <CyberCity />
         <CityBuildings
           buildings={buildings}
