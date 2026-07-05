@@ -3,15 +3,17 @@
 import { useState } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
+import { Html } from "@react-three/drei";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
-import { buildCityLayout, BuildingData, RoadData } from "@/lib/cityLayout";
+import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [roads, setRoads] = useState<RoadData[]>([]);
+  const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(
@@ -29,6 +31,7 @@ export default function Home() {
     setError("");
     setBuildings([]);
     setRoads([]);
+    setDistricts([]);
     setSelectedBuilding(null);
 
     try {
@@ -36,6 +39,7 @@ export default function Home() {
       const cityData = buildCityLayout(repoData.files);
       setBuildings(cityData.buildings);
       setRoads(cityData.roads);
+      setDistricts(cityData.districts);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -147,62 +151,6 @@ export default function Home() {
         </div>
       )}
 
-      {/* Selected building info panel */}
-      {selectedBuilding && (
-        <div
-          style={{
-            position: "absolute",
-            right: "24px",
-            top: "50%",
-            transform: "translateY(-50%)",
-            zIndex: 10,
-            width: "280px",
-            background: "rgba(0, 0, 0, 0.8)",
-            border: "1px solid #00ffff44",
-            borderRadius: "12px",
-            padding: "20px",
-            backdropFilter: "blur(12px)",
-            color: "#00ffff",
-            fontFamily: "monospace",
-          }}
-        >
-          <p
-            style={{ fontSize: "11px", color: "#ffffff88", margin: "0 0 4px" }}
-          >
-            {selectedBuilding.folderName}/
-          </p>
-          <p
-            style={{
-              fontSize: "15px",
-              fontWeight: 500,
-              margin: "0 0 12px",
-              color: "#ffffff",
-            }}
-          >
-            {selectedBuilding.fileName}
-          </p>
-          <p style={{ fontSize: "12px", color: "#ffffff66", margin: 0 }}>
-            {(selectedBuilding.fileSize / 1024).toFixed(1)} KB
-          </p>
-          <button
-            onClick={() => setSelectedBuilding(null)}
-            style={{
-              marginTop: "16px",
-              width: "100%",
-              padding: "8px",
-              borderRadius: "6px",
-              border: "1px solid #00ffff44",
-              background: "transparent",
-              color: "#00ffff88",
-              cursor: "pointer",
-              fontSize: "12px",
-            }}
-          >
-            close
-          </button>
-        </div>
-      )}
-
       {/* 3D Canvas */}
       <Canvas
         camera={{ position: [120, 90, 120], fov: 50 }}
@@ -222,7 +170,7 @@ export default function Home() {
           if (buildings.length === 0) {
             return (
               <>
-                <CyberCity gridSize={80} buildings={[]} roads={[]} />
+                <CyberCity gridSize={80} buildings={[]} roads={[]} districts={[]} />
               </>
             );
           }
@@ -236,7 +184,7 @@ export default function Home() {
           const gridSize = Math.max(maxX - minX, maxZ - minZ) + 20;
           return (
             <>
-              <CyberCity gridSize={gridSize} buildings={buildings} roads={roads} />
+              <CyberCity gridSize={gridSize} buildings={buildings} roads={roads} districts={districts} />
             </>
           );
         })()}
@@ -244,6 +192,55 @@ export default function Home() {
           buildings={buildings}
           onBuildingClick={setSelectedBuilding}
         />
+        {selectedBuilding && (
+          <Html position={[selectedBuilding.x, selectedBuilding.height + 4, selectedBuilding.z]} center>
+            <div
+              style={{
+                width: "320px", // Made it a little bigger as requested
+                background: "rgba(10, 10, 20, 0.35)",
+                border: "1px solid rgba(0, 255, 255, 0.2)",
+                borderRadius: "12px",
+                padding: "16px",
+                backdropFilter: "blur(8px)",
+                WebkitBackdropFilter: "blur(8px)",
+                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.5)",
+                color: "#ffffff",
+                fontFamily: "monospace",
+              }}
+            >
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
+                <h3 style={{ fontSize: "15px", fontWeight: 600, margin: 0, wordBreak: "break-all" }}>
+                  <span style={{ opacity: 0.6, fontSize: "13px" }}>{selectedBuilding.folderName}/</span>
+                  <br />
+                  <span style={{ color: "#00ffff" }}>{selectedBuilding.fileName}</span>
+                </h3>
+                <button
+                  onClick={() => setSelectedBuilding(null)}
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "6px",
+                    background: "rgba(235, 87, 87, 0.8)",
+                    border: "none",
+                    borderRadius: "4px",
+                    padding: "4px 8px",
+                    color: "white",
+                    fontSize: "12px",
+                    cursor: "pointer",
+                    fontWeight: 600,
+                    marginLeft: "12px"
+                  }}
+                >
+                  close ✕
+                </button>
+              </div>
+              
+              <div style={{ marginTop: "16px", fontSize: "13px", color: "rgba(255,255,255,0.7)" }}>
+                Size: {(selectedBuilding.fileSize / 1024).toFixed(1)} KB
+              </div>
+            </div>
+          </Html>
+        )}
       </Canvas>
     </main>
   );

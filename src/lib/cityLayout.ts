@@ -79,10 +79,20 @@ function getBuildingFootprint(size: number, type: BuildingData["buildingType"]) 
   }
 }
 
-export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[]; roads: RoadData[] } {
+export interface DistrictData {
+  id: string;
+  x: number;
+  z: number;
+  w: number;
+  d: number;
+  color: string;
+}
+
+export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[]; roads: RoadData[]; districts: DistrictData[] } {
   const cappedFiles = files.slice(0, 150);
   const buildings: BuildingData[] = [];
   const roads: RoadData[] = [];
+  const districtsData: DistrictData[] = [];
 
   const districts = new Map<string, GitHubFile[]>();
   cappedFiles.forEach((file) => {
@@ -233,7 +243,6 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
     const BLOCK_SIZE = pos.ring === 0 ? 2.2 : (pos.ring === 1 ? 2.5 : 3.0);
     const halfW = pos.w / 2;
     const halfD = pos.d / 2;
-    
     const colors = DISTRICT_COLORS[pos.colorIndex];
 
     pos.dfiles.forEach((file, i) => {
@@ -293,7 +302,16 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
         buildingType: type,
       });
     });
+
+    districtsData.push({
+      id: pos.name,
+      x: pos.x,
+      z: pos.z,
+      w: pos.w,
+      d: pos.d,
+      color: DISTRICT_COLORS[pos.colorIndex].emissive,
+    });
   });
 
-  return { buildings, roads };
+  return { buildings, roads, districts: districtsData };
 }

@@ -16,7 +16,8 @@ function useWindowTexture(seed: string, height: number, emissiveColor: string) {
     canvas.height = 256;
     const ctx = canvas.getContext("2d")!;
 
-    ctx.fillStyle = "#050510";
+    // Pure black background so only windows emit light
+    ctx.fillStyle = "#000000";
     ctx.fillRect(0, 0, 128, 256);
 
     let s = 0;
@@ -37,12 +38,14 @@ function useWindowTexture(seed: string, height: number, emissiveColor: string) {
         const x = padding + c * (w + padding);
         const y = padding + r * (h + padding);
         
-        if (random() < 0.70) {
-          ctx.fillStyle = emissiveColor;
-          ctx.globalAlpha = 0.8 + random() * 0.2; 
-        } else {
+        // Only a small percentage of windows are lit (performant & looks better)
+        if (random() < 0.20) {
+          // Draw pure white so the material's emissive color dictates the final tint
           ctx.fillStyle = "#ffffff";
-          ctx.globalAlpha = 0.05;
+          ctx.globalAlpha = 0.7 + random() * 0.3; 
+        } else {
+          ctx.fillStyle = "#000000";
+          ctx.globalAlpha = 1.0;
         }
         ctx.fillRect(x, y, w, h);
       }
@@ -90,9 +93,9 @@ function NeonBox({
       {!wireframeOnly && (
         <mesh geometry={geom} frustumCulled={true}>
           <meshStandardMaterial
-            color="#050510"
+            color="#020208"
             emissive={emissiveColor}
-            emissiveIntensity={(hovered ? 0.2 : 0.02) * emissiveIntensityMult}
+            emissiveIntensity={(hovered ? 2.5 : 1.2) * emissiveIntensityMult}
             roughness={0.2}
             metalness={0.8}
             transparent
@@ -189,6 +192,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
               position={[0, data.height / 2, 0]}
               emissiveColor={data.emissiveColor}
               hovered={hovered}
+              windowTex={windowTex}
             />
             <NeonBox
               width={data.width * 0.8}
@@ -197,6 +201,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
               position={[0, data.height + data.height * 0.05, 0]}
               emissiveColor={data.emissiveColor}
               hovered={hovered}
+              windowTex={windowTex}
             />
           </>
         )}
@@ -216,7 +221,8 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
                   position={[0, i * h + h / 2, 0]}
                   emissiveColor={data.emissiveColor}
                   hovered={hovered}
-                  emissiveIntensityMult={3.0} 
+                  windowTex={windowTex}
+                  emissiveIntensityMult={1.0} 
                 />
               );
             })}
@@ -232,6 +238,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
               position={[0, data.height / 2, 0]}
               emissiveColor={data.emissiveColor}
               hovered={hovered}
+              windowTex={windowTex}
             />
             <NeonBox
               width={data.width + 0.4}

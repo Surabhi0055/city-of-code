@@ -5,7 +5,9 @@ import { OrbitControls } from "@react-three/drei";
 import * as THREE from "three";
 import CityGrid from "./CityGrid";
 import LampPosts from "./LampPosts";
-import { RoadData } from "@/lib/cityLayout";
+import CityLights from "./CityLights";
+import CityClouds from "./CityClouds";
+import { BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
 
 function Starfield({ gridSize = 100 }: { gridSize?: number }) {
   const count = 800;
@@ -31,12 +33,13 @@ function Starfield({ gridSize = 100 }: { gridSize?: number }) {
 }
 
 interface CyberCityProps {
-  gridSize?: number;
-  buildings?: { x: number; z: number; width: number; depth: number }[];
-  roads?: RoadData[];
+  gridSize: number;
+  buildings: BuildingData[];
+  roads: RoadData[];
+  districts?: any[];
 }
 
-export default function CyberCity({ gridSize = 100, buildings = [], roads = [] }: CyberCityProps) {
+export default function CyberCity({ gridSize, buildings, roads, districts = [] }: CyberCityProps) {
   // Center orbit on the middle of buildings
   const center = useMemo(() => {
     if (buildings.length === 0) return [0, 0, 0] as [number, number, number];
@@ -63,8 +66,10 @@ export default function CyberCity({ gridSize = 100, buildings = [], roads = [] }
         target={center}
       />
 
-      <CityGrid gridSize={gridSize} roads={roads} />
+      <CityGrid gridSize={gridSize} roads={roads} districts={districts} />
       <LampPosts roads={roads} />
+      {districts && districts.length > 0 && <CityLights districts={districts} />}
+      <CityClouds gridSize={gridSize} />
       <Starfield gridSize={gridSize} />
     </>
   );
