@@ -10,14 +10,14 @@ import CityClouds from "./CityClouds";
 import { BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
 
 function Starfield({ gridSize = 100 }: { gridSize?: number }) {
-  const count = 800;
+  const count = 3000;
 
   const positions = useMemo(() => {
     const pos = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      pos[i * 3]     = (Math.random() - 0.5) * gridSize * 3;
-      pos[i * 3 + 1] = 25 + Math.random() * 80;
-      pos[i * 3 + 2] = (Math.random() - 0.5) * gridSize * 3;
+      pos[i * 3]     = (Math.random() - 0.5) * gridSize * 6; // Spread wider
+      pos[i * 3 + 1] = 60 + Math.random() * 200; // Far above the clouds
+      pos[i * 3 + 2] = (Math.random() - 0.5) * gridSize * 6;
     }
     return pos;
   }, [gridSize]);
@@ -27,7 +27,8 @@ function Starfield({ gridSize = 100 }: { gridSize?: number }) {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#8888ff" size={0.2} transparent opacity={0.5} sizeAttenuation />
+      {/* Set sizeAttenuation to false so they render exactly 2 pixels wide, very crisp! */}
+      <pointsMaterial color="#ffffff" size={2} transparent opacity={0.8} sizeAttenuation={false} />
     </points>
   );
 }

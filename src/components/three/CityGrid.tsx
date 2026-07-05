@@ -123,12 +123,21 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
         />
       </mesh>
 
+      {/* District Ground Plates */}
+      {districts.map((d, i) => (
+        <mesh key={`district-${i}`} position={[d.x, -0.02, d.z]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={true}>
+          <planeGeometry args={[d.w, d.d]} />
+          <meshStandardMaterial color={d.color} transparent opacity={0.06} emissive={d.color} emissiveIntensity={0.03} depthWrite={false} />
+        </mesh>
+      ))}
+
       {roads.map((road, i) => {
         const isHighway = road.type === "highway";
         const isMain = road.type === "main";
         const isAlley = road.type === "alley";
         
-        const yOffset = isHighway ? 0.05 : isMain ? 0.03 : 0.01;
+        const cyanY = isHighway ? 0.021 : isMain ? 0.022 : 0;
+        const asphaltY = isHighway ? 0.031 : isMain ? 0.032 : 0.01;
         const isHoriz = road.width > road.length;
         
         const dashes = [];
@@ -145,19 +154,24 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
         }
 
         return (
-          <group key={`${road.id}-${i}`} position={[road.x, yOffset, road.z]}>
+          <group key={`${road.id}-${i}`} position={[road.x, 0, road.z]}>
+            {/* Cyan Border Base Layer - Slightly wider than asphalt. Perfectly occluded at intersections! */}
+            {!isAlley && (
+              <mesh position={[0, cyanY, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeom} scale={[isHoriz ? road.width : road.width + 0.1, isHoriz ? road.length + 0.1 : road.length, 1]} frustumCulled={true}>
+                <meshBasicMaterial color="#00ffff" transparent opacity={0.6} />
+              </mesh>
+            )}
+
             {/* Dark asphalt road body */}
-            <mesh rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeom} scale={[road.width, road.length, 1]} frustumCulled={true}>
+            <mesh position={[0, asphaltY, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeom} scale={[road.width, road.length, 1]} frustumCulled={true}>
               <meshStandardMaterial color={road.color} emissive="#0a0a1a" roughness={0.3} metalness={0.5} />
             </mesh>
-            
-            {/* Gradient Road Edges outlining the city blocks (REMOVED as per user request) */}
             
             {/* Dashed center lines */}
             {dashes.map((d, j) => (
               <mesh 
                 key={j} 
-                position={[isHoriz ? d : 0, 0.01, isHoriz ? 0 : d]} 
+                position={[isHoriz ? d : 0, asphaltY + 0.01, isHoriz ? 0 : d]} 
                 rotation={[-Math.PI / 2, 0, 0]}
                 geometry={planeGeom} 
                 scale={[isHoriz ? 2 : 0.15, isHoriz ? 0.15 : 2, 1]}

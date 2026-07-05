@@ -27,23 +27,36 @@ export default function CityLights({ districts }: CityLightsProps) {
     return tex;
   }, []);
 
-  // Generate random positions for the lights
+  // Generate random positions for the lights and smoke
   const lights = useMemo(() => {
     const arr = [];
     const colors = ["#00ffff", "#ff00ff", "#ffcc00", "#00ff66"]; // Cyan, Magenta, Yellow, Green
     
     for (const d of districts) {
-      // Create a few glowing orbs scattered around each district
-      const count = 4 + Math.floor(Math.random() * 5);
+      // 1. Ground Lights (scattered on empty space and ground)
+      const count = 6 + Math.floor(Math.random() * 6);
       for (let i = 0; i < count; i++) {
-        const x = d.x + (Math.random() - 0.5) * d.w * 0.9;
-        const z = d.z + (Math.random() - 0.5) * d.d * 0.9;
-        const y = 0.5 + Math.random() * 1.5; // Float slightly above the ground
+        const x = d.x + (Math.random() - 0.5) * d.w * 1.2; // Spread wider across the district
+        const z = d.z + (Math.random() - 0.5) * d.d * 1.2;
+        const y = 0.5 + Math.random() * 3.0; // Float near the ground and lower building levels
         
         const color = colors[Math.floor(Math.random() * colors.length)];
-        const scale = 2.0 + Math.random() * 2.5; // Large blurred size
+        const scale = 3.0 + Math.random() * 3.0; // Medium blurred size
         
-        arr.push({ x, y, z, color, scale, speed: 0.5 + Math.random(), offset: Math.random() * Math.PI * 2 });
+        arr.push({ x, y, z, color, scale, speed: 0.5 + Math.random(), offset: Math.random() * Math.PI * 2, isSmoke: false });
+      }
+
+      // 2. Neon Smoke / High Altitude Lights (massive, soft, colorful fogs near building tops)
+      const skyCount = 3 + Math.floor(Math.random() * 3);
+      for (let i = 0; i < skyCount; i++) {
+        const x = d.x + (Math.random() - 0.5) * d.w * 1.5;
+        const z = d.z + (Math.random() - 0.5) * d.d * 1.5;
+        const y = 20 + Math.random() * 25; // Float very high up near building tops
+        
+        const color = colors[Math.floor(Math.random() * colors.length)];
+        const scale = 25.0 + Math.random() * 25.0; // Massive scale to look like blurred smoke/fog
+        
+        arr.push({ x, y, z, color, scale, speed: 0.1 + Math.random() * 0.2, offset: Math.random() * Math.PI * 2, isSmoke: true });
       }
     }
     return arr;
@@ -54,7 +67,53 @@ export default function CityLights({ districts }: CityLightsProps) {
       {lights.map((l, i) => (
         <AnimatedLight key={i} data={l} tex={glowTexture} />
       ))}
+      <StreetParticles />
     </group>
+  );
+}
+
+function StreetParticles() {
+  const count = 50;
+  const meshRef = useRef<THREE.InstancedMesh>(null);
+  
+  const particles = useMemo(() => {
+    const arr = [];
+    // Colors matching district neons (cyan, magenta, yellow)
+    const colors = [new THREE.Color("#00ffff"), new THREE.Color("#ff00ff"), new THREE.Color("#ffcc00")];
+    for (let i = 0; i < count; i++) {
+      arr.push({
+        x: (Math.random() - 0.5) * 150,
+        y: 1 + Math.random() * 3, // y = 1 to 4
+        z: (Math.random() - 0.5) * 150,
+        color: colors[Math.floor(Math.random() * colors.length)],
+        speed: 0.5 + Math.random() * 1.5,
+        offset: Math.random() * Math.PI * 2
+      });
+    }
+    return arr;
+  }, []);
+
+  const dummy = useMemo(() => new THREE.Object3D(), []);
+
+  useFrame(({ clock }) => {
+    if (!meshRef.current) return;
+    const time = clock.elapsedTime;
+    particles.forEach((p, i) => {
+      // Slow sine-wave bobbing
+      dummy.position.set(p.x, p.y + Math.sin(time * p.speed + p.offset) * 0.4, p.z);
+      dummy.updateMatrix();
+      meshRef.current!.setMatrixAt(i, dummy.matrix);
+      meshRef.current!.setColorAt(i, p.color);
+    });
+    meshRef.current.instanceMatrix.needsUpdate = true;
+    if (meshRef.current.instanceColor) meshRef.current.instanceColor.needsUpdate = true;
+  });
+
+  return (
+    <instancedMesh ref={meshRef} args={[undefined, undefined, count]} frustumCulled={false}>
+      <sphereGeometry args={[0.12, 8, 8]} />
+      <meshBasicMaterial toneMapped={false} />
+    </instancedMesh>
   );
 }
 
@@ -64,7 +123,10 @@ function AnimatedLight({ data, tex }: { data: any, tex: THREE.Texture }) {
   useFrame(({ clock }) => {
     if (materialRef.current) {
       // Gently pulse the opacity to make the lights feel alive
-      materialRef.current.opacity = 0.6 + 0.3 * Math.sin(clock.elapsedTime * data.speed + data.offset);
+      // Drastically reduced opacity to prevent blowing out the screen with additive blending
+      const baseOpacity = data.isSmoke ? 0.08 : 0.25; 
+      const variance = data.isSmoke ? 0.04 : 0.15;
+      materialRef.current.opacity = baseOpacity + variance * Math.sin(clock.elapsedTime * data.speed + data.offset);
     }
   });
 

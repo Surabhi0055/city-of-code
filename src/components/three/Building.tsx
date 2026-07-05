@@ -2,6 +2,7 @@
 
 import React, { useMemo, useState } from "react";
 import * as THREE from "three";
+import { useFrame } from "@react-three/fiber";
 import { BuildingData } from "@/lib/cityLayout";
 
 interface BuildingProps {
@@ -82,11 +83,20 @@ function NeonBox({
   const geom = useMemo(() => new THREE.BoxGeometry(width, height, depth), [width, height, depth]);
   const edgesGeom = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
 
-  const tex = windowTex?.clone();
-  if (tex) {
-    tex.repeat.set(Math.max(1, Math.floor(width / 2)), 1);
-    tex.needsUpdate = true;
-  }
+  const tex = useMemo(() => {
+    const t = windowTex?.clone();
+    if (t) {
+      t.repeat.set(Math.max(1, Math.floor(width / 2)), 1);
+      t.needsUpdate = true;
+    }
+    return t;
+  }, [windowTex, width]);
+
+  useFrame((state, delta) => {
+    if (hovered && tex) {
+      tex.offset.y -= delta * 0.8; // Animate window lights falling downwards
+    }
+  });
 
   return (
     <group position={position}>
@@ -122,7 +132,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
 
   return (
     <group
-      position={[data.x, 0, data.z]}
+      position={[data.x, -0.02, data.z]}
       onClick={(e) => {
         e.stopPropagation();
         onClick(data);
@@ -180,6 +190,17 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
                 <meshBasicMaterial color={data.emissiveColor} toneMapped={false} />
               </mesh>
             </group>
+            {/* Tower Crown */}
+            <mesh position={[0, data.height + 0.6, 0]}>
+              <boxGeometry args={[data.width * 0.5, 1.2, data.depth * 0.5]} />
+              <meshStandardMaterial
+                color={data.color}
+                emissive={data.emissiveColor}
+                emissiveIntensity={1.2}
+                roughness={0.1}
+                metalness={0.9}
+              />
+            </mesh>
           </>
         )}
 
@@ -203,10 +224,19 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
               hovered={hovered}
               windowTex={windowTex}
             />
+            {/* Slab Rooftop Structures */}
+            <mesh position={[-data.width * 0.25, data.height + 0.3, 0]}>
+              <boxGeometry args={[1.2, 0.6, 1.2]} />
+              <meshStandardMaterial color={data.color} emissive={data.emissiveColor} emissiveIntensity={0.6} roughness={0.2} metalness={0.8} />
+            </mesh>
+            <mesh position={[data.width * 0.25, data.height + 0.5, 0]}>
+              <boxGeometry args={[0.8, 1, 0.8]} />
+              <meshStandardMaterial color={data.color} emissive={data.emissiveColor} emissiveIntensity={0.6} roughness={0.2} metalness={0.8} />
+            </mesh>
           </>
         )}
 
-        {data.buildingType === "monument" && (
+        {data.buildingType === "spire" && (
           <>
             {[0, 1, 2, 3, 4].map((i) => {
               const h = data.height * 0.2;
@@ -226,10 +256,21 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
                 />
               );
             })}
+            {/* Spire Cone Tip */}
+            <mesh position={[0, data.height + 1, 0]}>
+              <coneGeometry args={[0.4, 2, 4]} />
+              <meshStandardMaterial
+                color={data.color}
+                emissive={data.emissiveColor}
+                emissiveIntensity={2}
+                roughness={0.1}
+                metalness={1}
+              />
+            </mesh>
           </>
         )}
 
-        {data.buildingType === "bunker" && (
+        {data.buildingType === "block" && (
           <>
             <NeonBox
               width={data.width}
@@ -249,8 +290,20 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
               hovered={hovered}
               wireframeOnly={true}
             />
+            {/* Block Rooftop Mechanical Box */}
+            <mesh position={[data.width * 0.2, data.height + 0.4, 0]}>
+              <boxGeometry args={[data.width * 0.3, 0.8, data.depth * 0.4]} />
+              <meshStandardMaterial
+                color={data.color}
+                emissive={data.emissiveColor}
+                emissiveIntensity={0.8}
+                roughness={0.3}
+                metalness={0.7}
+              />
+            </mesh>
           </>
         )}
+
 
         {data.buildingType === "residential" && (
           <NeonBox

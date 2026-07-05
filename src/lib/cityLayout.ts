@@ -13,7 +13,7 @@ export interface BuildingData {
   filePath: string;
   fileSize: number;
   folderName: string;
-  buildingType: "tower" | "slab" | "monument" | "bunker" | "residential";
+  buildingType: "tower" | "slab" | "block" | "spire" | "residential";
 }
 
 export interface RoadData {
@@ -27,20 +27,20 @@ export interface RoadData {
 }
 
 const DISTRICT_COLORS = [
-  { base: "#050505", emissive: "#00ffff" }, // Cyan
-  { base: "#050505", emissive: "#ff00ff" }, // Magenta
-  { base: "#050505", emissive: "#ffff00" }, // Yellow
-  { base: "#050505", emissive: "#00ff88" }, // Green
-  { base: "#050505", emissive: "#ff4400" }, // Orange
-  { base: "#050505", emissive: "#4488ff" }, // Blue
-  { base: "#050505", emissive: "#ff0088" }, // Pink
-  { base: "#050505", emissive: "#88ff00" }, // Lime
+  { base: "#001a00", emissive: "#00ff88" },  // green
+  { base: "#00001a", emissive: "#00ffff" },  // cyan
+  { base: "#1a001a", emissive: "#ff00ff" },  // magenta
+  { base: "#1a1a00", emissive: "#ffff00" },  // yellow
+  { base: "#1a0000", emissive: "#ff4400" },  // orange
+  { base: "#00001a", emissive: "#4488ff" },  // blue
+  { base: "#1a0011", emissive: "#ff0088" },  // pink
+  { base: "#001a0d", emissive: "#00ffaa" },  // teal
 ];
 
 function getBuildingType(size: number, fileName: string): BuildingData["buildingType"] {
   const ext = fileName.match(/\.[^.]+$/)?.[0] ?? "";
-  if ([".md", ".txt"].includes(ext)) return "monument";
-  if ([".json", ".yml", ".yaml", ".env"].includes(ext)) return "bunker";
+  if ([".md", ".txt"].includes(ext)) return "spire";
+  if ([".json", ".yml", ".yaml", ".env"].includes(ext)) return "block";
   if ([".css", ".scss", ".html"].includes(ext)) return "slab";
   if (size > 10000 && [".ts", ".tsx", ".js", ".jsx"].includes(ext)) return "tower";
   return "residential"; // Default fallback
@@ -56,26 +56,44 @@ function getFileHeight(size: number, type: BuildingData["buildingType"], seed: n
   let multiplier = 1.0;
   switch (type) {
     case "tower": multiplier = 3.5; break; // Exaggerated skyline
-    case "monument": multiplier = 3.0; break;
+    case "spire": multiplier = 3.0; break;
     case "slab": multiplier = 0.25; break; // Very low
-    case "bunker": multiplier = 0.3; break;
+    case "block": multiplier = 0.3; break;
     case "residential": multiplier = 1.0; break;
   }
   
   let height = baseHeight * multiplier;
-  if (type === "bunker") height = Math.min(height, 3);
+  if (type === "block") height = Math.min(height, 3);
   
   const variance = 0.85 + seededRandom(seed) * 0.30;
   return height * variance;
 }
 
-function getBuildingFootprint(size: number, type: BuildingData["buildingType"]) {
+function getBuildingDimensions(type: BuildingData["buildingType"], seed: number) {
+  const rand = seededRandom(seed);
   switch (type) {
-    case "tower": return { width: 1.8, depth: 1.8 }; // Smaller footprints to allow tighter packing
-    case "monument": return { width: 1.5, depth: 1.5 };
-    case "slab": return { width: 2.0, depth: 1.5 };
-    case "bunker": return { width: 2.0, depth: 2.0 };
-    case "residential": return { width: 1.2, depth: 1.2 };
+    case "tower": 
+      return { 
+        width: 1.0 + rand * 0.8,    // 1.0–1.8
+        depth: 1.0 + rand * 0.8     
+      };
+    case "block": 
+      return { 
+        width: 1.8 + rand * 0.4,    // 1.8–2.2 (Maxes out right before 2.4 spacing)
+        depth: 1.8 + rand * 0.4     
+      };
+    case "slab":  
+      return { 
+        width: 2.0 + rand * 0.3,    // 2.0–2.3 (Maxes out right before 2.4 spacing)
+        depth: 1.2 + rand * 0.5     
+      };
+    case "spire": 
+      return { 
+        width: 0.8 + rand * 0.4,    // 0.8–1.2
+        depth: 0.8 + rand * 0.4
+      };
+    default: 
+      return { width: 1.5, depth: 1.5 };
   }
 }
 
@@ -108,19 +126,19 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
   const districtPositions: { name: string; x: number; z: number; w: number; d: number; ring: number, colorIndex: number, dfiles: GitHubFile[], cols: number, rows: number }[] = [];
 
   sortedDistricts.forEach(([name, dfiles], i) => {
-    // Math.min(7, dfiles.length) for BUILDINGS_PER_ROW = 7
-    const cols = Math.min(7, dfiles.length);
+    const BUILDINGS_PER_ROW = 6;
+    const cols = Math.min(BUILDINGS_PER_ROW, dfiles.length);
     const rows = Math.ceil(dfiles.length / cols);
     
-    // Tighter spacing: 2.2 for dense core, max 3.0 for outskirts
+    const BUILDING_SPACING = 2.4;
+    const BLOCK_SIZE = BUILDING_SPACING;
     const ring = i < 2 ? 0 : (i < 6 ? 1 : 2);
-    const BLOCK_SIZE = ring === 0 ? 2.2 : (ring === 1 ? 2.5 : 3.0);
     
     const w = cols * BLOCK_SIZE;
     const d = rows * BLOCK_SIZE;
     
     // Greedy radial packer for tight gaps
-    const gap = 3.0;
+    const DISTRICT_GAP = 2.5; // Perfectly fits the 2.5 wide main roads to prevent edge buildings from sitting on asphalt
     let found = false;
     let rad = 0;
     let angle = 0;
@@ -131,8 +149,8 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
       z = Math.sin(angle) * rad;
       let overlap = false;
       for (const p of districtPositions) {
-        if (Math.abs(x - p.x) < (w + p.w) / 2 + gap && 
-            Math.abs(z - p.z) < (d + p.d) / 2 + gap) {
+        if (Math.abs(x - p.x) < (w + p.w) / 2 + DISTRICT_GAP && 
+            Math.abs(z - p.z) < (d + p.d) / 2 + DISTRICT_GAP) {
           overlap = true;
           break;
         }
@@ -168,8 +186,8 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
 
   // 1. GENERATE ROADS FIRST
   // Highways - Dark grey asphalt
-  roads.push({ id: `highway-h`, x: centerX, z: centerZ, width: cityWidth, length: 8, type: "highway", color: "#2a2a3a" });
-  roads.push({ id: `highway-v`, x: centerX, z: centerZ, width: 8, length: cityDepth, type: "highway", color: "#2a2a3a" });
+  roads.push({ id: `highway-h`, x: centerX, z: centerZ, width: cityWidth, length: 3.5, type: "highway", color: "#2a2a3a" });
+  roads.push({ id: `highway-v`, x: centerX, z: centerZ, width: 3.5, length: cityDepth, type: "highway", color: "#2a2a3a" });
 
   const xGaps = new Set<number>();
   const zGaps = new Set<number>();
@@ -201,14 +219,14 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
 
   // Main Roads - Darker grey asphalt
   Array.from(xGaps).forEach((gapX, i) => {
-    if (Math.abs(gapX - centerX) > 8) {
-      roads.push({ id: `main-v-${i}`, x: gapX, z: centerZ, width: 4, length: cityDepth, type: "main", color: "#1e1e2e" });
+    if (Math.abs(gapX - centerX) > 5) {
+      roads.push({ id: `main-v-${i}`, x: gapX, z: centerZ, width: 2.5, length: cityDepth, type: "main", color: "#1e1e2e" });
     }
   });
 
   Array.from(zGaps).forEach((gapZ, i) => {
-    if (Math.abs(gapZ - centerZ) > 8) {
-      roads.push({ id: `main-h-${i}`, x: centerX, z: gapZ, width: cityWidth, length: 4, type: "main", color: "#1e1e2e" });
+    if (Math.abs(gapZ - centerZ) > 5) {
+      roads.push({ id: `main-h-${i}`, x: centerX, z: gapZ, width: cityWidth, length: 2.5, type: "main", color: "#1e1e2e" });
     }
   });
 
@@ -216,9 +234,9 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
   districtPositions.forEach((pos) => {
     if (pos.w > 20 && pos.d > 20) {
       if (pos.w >= pos.d) {
-        roads.push({ id: `alley-v-${pos.name}`, x: pos.x, z: pos.z, width: 1.5, length: pos.d, type: "alley", color: "#141420" });
+        roads.push({ id: `alley-v-${pos.name}`, x: pos.x, z: pos.z, width: 1.0, length: pos.d, type: "alley", color: "#141420" });
       } else {
-        roads.push({ id: `alley-h-${pos.name}`, x: pos.x, z: pos.z, width: pos.w, length: 1.5, type: "alley", color: "#141420" });
+        roads.push({ id: `alley-h-${pos.name}`, x: pos.x, z: pos.z, width: pos.w, length: 1.0, type: "alley", color: "#141420" });
       }
     }
   });
@@ -237,10 +255,10 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
   });
 
   // 3. PLACE BUILDINGS & AVOID COLLISIONS
-  const JITTER = 0.4; // Reduced jitter for tighter packing
-  
+  const JITTER = 0.2; 
   districtPositions.forEach((pos, districtIndex) => {
-    const BLOCK_SIZE = pos.ring === 0 ? 2.2 : (pos.ring === 1 ? 2.5 : 3.0);
+    const BUILDING_SPACING = 2.4;
+    const BLOCK_SIZE = BUILDING_SPACING;
     const halfW = pos.w / 2;
     const halfD = pos.d / 2;
     const colors = DISTRICT_COLORS[pos.colorIndex];
@@ -254,7 +272,7 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
       
       const seed = i + districtIndex * 100;
       const height = getFileHeight(file.size, type, seed);
-      const { width: bw, depth: bd } = getBuildingFootprint(file.size, type);
+      const { width: bw, depth: bd } = getBuildingDimensions(type, seed);
 
       const jx = (seededRandom(seed) - 0.5) * JITTER;
       const jz = (seededRandom(seed + 1) - 0.5) * JITTER;
@@ -311,6 +329,7 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
       d: pos.d,
       color: DISTRICT_COLORS[pos.colorIndex].emissive,
     });
+
   });
 
   return { buildings, roads, districts: districtsData };
