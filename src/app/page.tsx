@@ -1,13 +1,14 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
-import { Html } from "@react-three/drei";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
+import InfoPanel from "@/components/three/InfoPanel";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
+import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -16,9 +17,14 @@ export default function Home() {
   const [districts, setDistricts] = useState<DistrictData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(
-    null,
-  );
+
+  // Info panel state
+  const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
+  const [explanation, setExplanation] = useState("");
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // Store owner/repo for file fetching
+  const [repoInfo, setRepoInfo] = useState<{ owner: string; repo: string } | null>(null);
 
   async function handleGenerate() {
     const parsed = parseGitHubUrl(url);
@@ -33,6 +39,7 @@ export default function Home() {
     setRoads([]);
     setDistricts([]);
     setSelectedBuilding(null);
+    setExplanation("");
 
     try {
       const repoData = await fetchRepoData(parsed.owner, parsed.repo);
@@ -40,11 +47,64 @@ export default function Home() {
       setBuildings(cityData.buildings);
       setRoads(cityData.roads);
       setDistricts(cityData.districts);
+      setRepoInfo({ owner: parsed.owner, repo: parsed.repo });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
       setLoading(false);
     }
+  }
+
+  // Called when a building is clicked in 3D
+  const handleSelectBuilding = useCallback((data: BuildingData) => {
+    setSelectedBuilding(data);
+    setExplanation("");
+    setIsAnalyzing(false);
+  }, []);
+
+  // Called when "Analyze ->" is clicked on the info panel
+  const handleBuildingClick = useCallback(
+    async (data: BuildingData) => {
+      if (!repoInfo) return;
+
+      setExplanation("");
+      setIsAnalyzing(true);
+
+      try {
+        // 1. Fetch the actual file content from GitHub
+        const content = await fetchFileContent(
+          repoInfo.owner,
+          repoInfo.repo,
+          data.filePath
+        );
+
+        // 2. Stream Claude's explanation word by word
+        await streamFileExplanation(
+          data.fileName,
+          content,
+          (chunk) => {
+            // Append each chunk to explanation as it streams
+            setExplanation((prev) => prev + chunk);
+          },
+          () => {
+            setIsAnalyzing(false);
+          }
+        );
+      } catch (err) {
+        console.error(err);
+        setExplanation(
+          `Error analyzing file: ${err instanceof Error ? err.message : "Unknown error"}`
+        );
+        setIsAnalyzing(false);
+      }
+    },
+    [repoInfo]
+  );
+
+  function handleClosePanel() {
+    setSelectedBuilding(null);
+    setExplanation("");
+    setIsAnalyzing(false);
   }
 
   return (
@@ -190,58 +250,18 @@ export default function Home() {
         })()}
         <CityBuildings
           buildings={buildings}
-          onBuildingClick={setSelectedBuilding}
+          onBuildingClick={handleSelectBuilding}
         />
-        {selectedBuilding && (
-          <Html position={[selectedBuilding.x, selectedBuilding.height + 4, selectedBuilding.z]} center>
-            <div
-              style={{
-                width: "320px", // Made it a little bigger as requested
-                background: "rgba(10, 10, 20, 0.35)",
-                border: "1px solid rgba(0, 255, 255, 0.2)",
-                borderRadius: "12px",
-                padding: "16px",
-                backdropFilter: "blur(8px)",
-                WebkitBackdropFilter: "blur(8px)",
-                boxShadow: "0 8px 32px 0 rgba(0, 0, 0, 0.5)",
-                color: "#ffffff",
-                fontFamily: "monospace",
-              }}
-            >
-              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-                <h3 style={{ fontSize: "15px", fontWeight: 600, margin: 0, wordBreak: "break-all" }}>
-                  <span style={{ opacity: 0.6, fontSize: "13px" }}>{selectedBuilding.folderName}/</span>
-                  <br />
-                  <span style={{ color: "#00ffff" }}>{selectedBuilding.fileName}</span>
-                </h3>
-                <button
-                  onClick={() => setSelectedBuilding(null)}
-                  style={{
-                    display: "flex",
-                    alignItems: "center",
-                    gap: "6px",
-                    background: "rgba(235, 87, 87, 0.8)",
-                    border: "none",
-                    borderRadius: "4px",
-                    padding: "4px 8px",
-                    color: "white",
-                    fontSize: "12px",
-                    cursor: "pointer",
-                    fontWeight: 600,
-                    marginLeft: "12px"
-                  }}
-                >
-                  close ✕
-                </button>
-              </div>
-              
-              <div style={{ marginTop: "16px", fontSize: "13px", color: "rgba(255,255,255,0.7)" }}>
-                Size: {(selectedBuilding.fileSize / 1024).toFixed(1)} KB
-              </div>
-            </div>
-          </Html>
-        )}
       </Canvas>
+      
+      {/* AI Info Panel */}
+      <InfoPanel
+        building={selectedBuilding}
+        explanation={explanation}
+        isLoading={isAnalyzing}
+        onClose={handleClosePanel}
+        onAnalyze={() => selectedBuilding && handleBuildingClick(selectedBuilding)}
+      />
     </main>
   );
 }

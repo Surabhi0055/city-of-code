@@ -4,7 +4,8 @@ export async function fetchFileContent(
   filePath: string,
 ): Promise<string> {
   const response = await fetch(
-    `https://raw.githubusercontent.com/${owner}/${repo}/HEAD/${filePath}`,
+    `https://api.github.com/repos/${owner}/${repo}/contents/${filePath}`,
+    { headers: { Accept: "application/vnd.github.v3.raw" } }
   );
 
   if (!response.ok) {
@@ -27,19 +28,14 @@ export async function streamFileExplanation(
   onChunk: (text: string) => void,
   onDone: () => void,
 ): Promise<void> {
-  const response = await fetch("https://api.anthropic.com/v1/messages", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify({
-      model: "claude-sonnet-4-6",
-      max_tokens: 1000,
-      stream: true,
-      messages: [
-        {
-          role: "user",
-          content: `You are analyzing a file called "${fileName}" from a software project.
+  const apiKey = process.env.NEXT_PUBLIC_GEMINI_API_KEY;
+  if (!apiKey) {
+    onChunk("Error: NEXT_PUBLIC_GEMINI_API_KEY is not set in .env.local");
+    onDone();
+    return;
+  }
+
+  const prompt = `You are analyzing a file called "${fileName}" from a software project.
 
 Here is the file content:
 \`\`\`
@@ -51,14 +47,25 @@ Explain what this file does in exactly 3 bullet points. Each bullet point should
 - Be one clear sentence
 - Be technical but understandable
 
-No intro sentence. No conclusion. Just 3 bullets.`,
-        },
-      ],
-    }),
-  });
+No intro sentence. No conclusion. Just 3 bullets.`;
+
+  const response = await fetch(
+    `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:streamGenerateContent?alt=sse&key=${apiKey}`,
+    {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { maxOutputTokens: 1000 },
+      }),
+    }
+  );
 
   if (!response.ok) {
-    throw new Error(`Claude API error: ${response.status}`);
+    const errorText = await response.text();
+    throw new Error(`Gemini API error ${response.status}: ${errorText}`);
   }
 
   const reader = response.body!.getReader();
@@ -74,13 +81,10 @@ No intro sentence. No conclusion. Just 3 bullets.`,
     for (const line of lines) {
       if (line.startsWith("data: ")) {
         const data = line.slice(6).trim();
-        if (data === "[DONE]") {
-          onDone();
-          return;
-        }
+        if (!data) continue;
         try {
           const parsed = JSON.parse(data);
-          const text = parsed?.delta?.text;
+          const text = parsed?.candidates?.[0]?.content?.parts?.[0]?.text;
           if (text) onChunk(text);
         } catch {
           // skip malformed chunks
