@@ -6,11 +6,12 @@ import { Canvas } from "@react-three/fiber";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
-import { buildCityLayout, BuildingData } from "@/lib/cityLayout";
+import { buildCityLayout, BuildingData, RoadData } from "@/lib/cityLayout";
 
 export default function Home() {
   const [url, setUrl] = useState("");
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
+  const [roads, setRoads] = useState<RoadData[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(
@@ -27,12 +28,14 @@ export default function Home() {
     setLoading(true);
     setError("");
     setBuildings([]);
+    setRoads([]);
     setSelectedBuilding(null);
 
     try {
       const repoData = await fetchRepoData(parsed.owner, parsed.repo);
       const cityData = buildCityLayout(repoData.files);
-      setBuildings(cityData);
+      setBuildings(cityData.buildings);
+      setRoads(cityData.roads);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -209,16 +212,19 @@ export default function Home() {
           powerPreference: "high-performance",
         }}
       >
-        {/* Lighting — brighter so buildings and roads are clearly visible */}
-        <ambientLight intensity={3} color="#1a1a3a" />
-        <directionalLight position={[50, 80, 50]} color="#ffffff" intensity={2} />
-        <pointLight position={[0, 40, 0]}    color="#00ffff" intensity={5} distance={300} />
-        <pointLight position={[80, 30, 80]}  color="#ff00ff" intensity={3} distance={200} />
-        <pointLight position={[-30, 30, 80]} color="#4400ff" intensity={2} distance={200} />
+        {/* Lighting — reduced global lighting, removed directional, kept within budget */}
+        <ambientLight intensity={1.5} color="#1a1a3a" />
+        <pointLight position={[0, 80, 0]}    color="#00ffff" intensity={3} distance={400} />
+        <pointLight position={[80, 50, 80]}  color="#ff00ff" intensity={2} distance={300} />
+        <pointLight position={[-60, 40, -60]} color="#4400ff" intensity={1.5} distance={300} />
 
         {(() => {
           if (buildings.length === 0) {
-            return <CyberCity gridSize={80} buildings={[]} />;
+            return (
+              <>
+                <CyberCity gridSize={80} buildings={[]} roads={[]} />
+              </>
+            );
           }
           let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
           buildings.forEach(b => {
@@ -228,7 +234,11 @@ export default function Home() {
             if (b.z + b.depth / 2 > maxZ) maxZ = b.z + b.depth / 2;
           });
           const gridSize = Math.max(maxX - minX, maxZ - minZ) + 20;
-          return <CyberCity gridSize={gridSize} buildings={buildings} />;
+          return (
+            <>
+              <CyberCity gridSize={gridSize} buildings={buildings} roads={roads} />
+            </>
+          );
         })()}
         <CityBuildings
           buildings={buildings}

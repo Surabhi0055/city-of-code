@@ -1,8 +1,6 @@
 "use client";
 
-import { useRef, useState } from "react";
-import { useFrame } from "@react-three/fiber";
-import { Edges } from "@react-three/drei";
+import React, { useMemo, useState } from "react";
 import * as THREE from "three";
 import { BuildingData } from "@/lib/cityLayout";
 
@@ -11,116 +9,260 @@ interface BuildingProps {
   onClick: (data: BuildingData) => void;
 }
 
-export default function Building({ data, onClick }: BuildingProps) {
-  const meshRef = useRef<THREE.Mesh>(null);
-  const [hovered, setHovered] = useState(false);
+function useWindowTexture(seed: string, height: number, emissiveColor: string) {
+  return useMemo(() => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 128;
+    canvas.height = 256;
+    const ctx = canvas.getContext("2d")!;
 
-  useFrame((state) => {
-    if (!meshRef.current) return;
-    const mat = meshRef.current.material as THREE.MeshStandardMaterial;
-    mat.emissiveIntensity = hovered
-      ? 0.4 + Math.sin(state.clock.elapsedTime * 6) * 0.2
-      : 0.08;
-  });
+    ctx.fillStyle = "#050510";
+    ctx.fillRect(0, 0, 128, 256);
 
-  const halfH = data.height / 2;
+    let s = 0;
+    for (let i = 0; i < seed.length; i++) s += seed.charCodeAt(i);
+    const random = () => {
+      s = Math.sin(s) * 10000;
+      return s - Math.floor(s);
+    };
+
+    const cols = 4;
+    const rows = Math.max(4, Math.floor(height));
+    const padding = 4;
+    const w = (128 - padding * (cols + 1)) / cols;
+    const h = (256 - padding * (rows + 1)) / rows;
+
+    for (let r = 0; r < rows; r++) {
+      for (let c = 0; c < cols; c++) {
+        const x = padding + c * (w + padding);
+        const y = padding + r * (h + padding);
+        
+        if (random() < 0.70) {
+          ctx.fillStyle = emissiveColor;
+          ctx.globalAlpha = 0.8 + random() * 0.2; 
+        } else {
+          ctx.fillStyle = "#ffffff";
+          ctx.globalAlpha = 0.05;
+        }
+        ctx.fillRect(x, y, w, h);
+      }
+    }
+
+    const tex = new THREE.CanvasTexture(canvas);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.wrapT = THREE.RepeatWrapping;
+    return tex;
+  }, [seed, height, emissiveColor]);
+}
+
+function NeonBox({
+  width,
+  height,
+  depth,
+  position,
+  emissiveColor,
+  hovered,
+  windowTex,
+  emissiveIntensityMult = 1,
+  wireframeOnly = false,
+}: {
+  width: number;
+  height: number;
+  depth: number;
+  position: [number, number, number];
+  emissiveColor: string;
+  hovered: boolean;
+  windowTex?: THREE.Texture;
+  emissiveIntensityMult?: number;
+  wireframeOnly?: boolean;
+}) {
+  const geom = useMemo(() => new THREE.BoxGeometry(width, height, depth), [width, height, depth]);
+  const edgesGeom = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
+
+  const tex = windowTex?.clone();
+  if (tex) {
+    tex.repeat.set(Math.max(1, Math.floor(width / 2)), 1);
+    tex.needsUpdate = true;
+  }
 
   return (
-    <group position={[data.x, 0, data.z]}>
-      {/* Main body */}
-      <mesh
-        ref={meshRef}
-        position={[0, halfH, 0]}
-        onClick={() => onClick(data)}
-        onPointerOver={() => { setHovered(true); document.body.style.cursor = "pointer"; }}
-        onPointerOut={() => { setHovered(false); document.body.style.cursor = "default"; }}
-      >
-        <boxGeometry args={[data.width, data.height, data.depth]} />
-        <meshStandardMaterial
-          color="#060610"
-          emissive={data.emissiveColor}
-          emissiveIntensity={0.08}
-          roughness={0.2}
-          metalness={0.8}
-          transparent
-          opacity={0.92}
-        />
-        <Edges threshold={15} color={hovered ? "#ffffff" : data.emissiveColor} />
-      </mesh>
-
-      {/* === BUILDING VARIATIONS === */}
-
-      {/* STEPPED: tiered setback on top half */}
-      {data.buildingType === "stepped" && (
-        <mesh position={[0, data.height * 0.85, 0]}>
-          <boxGeometry args={[data.width * 0.6, data.height * 0.3, data.depth * 0.6]} />
+    <group position={position}>
+      {!wireframeOnly && (
+        <mesh geometry={geom} frustumCulled={true}>
           <meshStandardMaterial
-            color="#060610"
-            emissive={data.emissiveColor}
-            emissiveIntensity={0.12}
+            color="#050510"
+            emissive={emissiveColor}
+            emissiveIntensity={(hovered ? 0.2 : 0.02) * emissiveIntensityMult}
             roughness={0.2}
             metalness={0.8}
             transparent
-            opacity={0.92}
+            opacity={0.95}
+            map={tex}
+            emissiveMap={tex}
           />
-          <Edges threshold={15} color={data.emissiveColor} />
         </mesh>
       )}
-
-      {/* ANTENNA: thin pole + glowing tip on top */}
-      {data.buildingType === "antenna" && (
-        <group position={[0, data.height, 0]}>
-          {/* pole */}
-          <mesh position={[0, 1.5, 0]}>
-            <cylinderGeometry args={[0.05, 0.05, 3, 4]} />
-            <meshBasicMaterial color={data.emissiveColor} />
-          </mesh>
-          {/* glowing tip */}
-          <mesh position={[0, 3.2, 0]}>
-            <sphereGeometry args={[0.15, 6, 6]} />
-            <meshBasicMaterial color={data.emissiveColor} />
-          </mesh>
-        </group>
-      )}
-
-      {/* TOWER: pyramid cap on top */}
-      {data.buildingType === "tower" && (
-        <mesh position={[0, data.height + 0.6, 0]}>
-          <coneGeometry args={[data.width * 0.4, 1.5, 4]} />
-          <meshStandardMaterial
-            color="#060610"
-            emissive={data.emissiveColor}
-            emissiveIntensity={0.2}
-            roughness={0.1}
-            metalness={1}
-          />
-          <Edges threshold={15} color={data.emissiveColor} />
-        </mesh>
-      )}
-
-      {/* SPIRE: thin spike on top */}
-      {data.buildingType === "spire" && (
-        <mesh position={[0, data.height + 0.5, 0]}>
-          <coneGeometry args={[0.15, 1.2, 4]} />
-          <meshBasicMaterial color={data.emissiveColor} />
-        </mesh>
-      )}
-
-      {/* Horizontal floor lines on taller buildings — makes them look like the reference */}
-      {data.height > 5 && (() => {
-        const lines = [];
-        const floorH = 1.8;
-        const floors = Math.floor(data.height / floorH);
-        for (let f = 1; f < floors; f++) {
-          lines.push(
-            <mesh key={f} position={[0, f * floorH, 0]}>
-              <boxGeometry args={[data.width + 0.04, 0.02, data.depth + 0.04]} />
-              <meshBasicMaterial color={data.emissiveColor} transparent opacity={0.35} />
-            </mesh>
-          );
-        }
-        return lines;
-      })()}
+      <lineSegments geometry={edgesGeom} frustumCulled={true}>
+        <lineBasicMaterial
+          color={hovered ? "#ffffff" : emissiveColor}
+          toneMapped={false}
+          transparent={false}
+        />
+      </lineSegments>
     </group>
   );
 }
+
+function BuildingComponent({ data, onClick }: BuildingProps) {
+  const [hovered, setHovered] = useState(false);
+  const windowTex = useWindowTexture(data.id, data.height, data.emissiveColor);
+
+  return (
+    <group
+      position={[data.x, 0, data.z]}
+      onClick={(e) => {
+        e.stopPropagation();
+        onClick(data);
+      }}
+      onPointerOver={(e) => {
+        e.stopPropagation();
+        setHovered(true);
+        document.body.style.cursor = "pointer";
+      }}
+      onPointerOut={(e) => {
+        setHovered(false);
+        document.body.style.cursor = "default";
+      }}
+    >
+      {/* Ground Skirt to plant the building visually */}
+      <mesh position={[0, 0.15, 0]} frustumCulled={true}>
+        <boxGeometry args={[data.width, 0.3, data.depth]} />
+        <meshStandardMaterial color="#000000" emissive="#000000" emissiveIntensity={0} roughness={0.9} />
+      </mesh>
+
+      {/* Main Building Group - offset by skirt height to prevent clipping */}
+      <group position={[0, 0.3, 0]}>
+        {data.buildingType === "tower" && (
+          <>
+            <NeonBox
+              width={data.width}
+              height={data.height * 0.6}
+              depth={data.depth}
+              position={[0, data.height * 0.3, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+              windowTex={windowTex}
+            />
+            <NeonBox
+              width={data.width * 0.8}
+              height={data.height * 0.25}
+              depth={data.depth * 0.8}
+              position={[0, data.height * 0.6 + data.height * 0.125, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+              windowTex={windowTex}
+            />
+            <NeonBox
+              width={data.width * 0.6}
+              height={data.height * 0.15}
+              depth={data.depth * 0.6}
+              position={[0, data.height * 0.85 + data.height * 0.075, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+              windowTex={windowTex}
+            />
+            <group position={[0, data.height + 1.0, 0]}>
+              <mesh frustumCulled={true}>
+                <cylinderGeometry args={[0.08, 0.08, 2]} />
+                <meshBasicMaterial color={data.emissiveColor} toneMapped={false} />
+              </mesh>
+            </group>
+          </>
+        )}
+
+        {data.buildingType === "slab" && (
+          <>
+            <NeonBox
+              width={data.width}
+              height={data.height}
+              depth={data.depth}
+              position={[0, data.height / 2, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+            />
+            <NeonBox
+              width={data.width * 0.8}
+              height={data.height * 0.1}
+              depth={data.depth * 0.8}
+              position={[0, data.height + data.height * 0.05, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+            />
+          </>
+        )}
+
+        {data.buildingType === "monument" && (
+          <>
+            {[0, 1, 2, 3, 4].map((i) => {
+              const h = data.height * 0.2;
+              const w = data.width * Math.pow(0.85, i);
+              const d = data.depth * Math.pow(0.85, i);
+              return (
+                <NeonBox
+                  key={i}
+                  width={w}
+                  height={h}
+                  depth={d}
+                  position={[0, i * h + h / 2, 0]}
+                  emissiveColor={data.emissiveColor}
+                  hovered={hovered}
+                  emissiveIntensityMult={3.0} 
+                />
+              );
+            })}
+          </>
+        )}
+
+        {data.buildingType === "bunker" && (
+          <>
+            <NeonBox
+              width={data.width}
+              height={data.height}
+              depth={data.depth}
+              position={[0, data.height / 2, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+            />
+            <NeonBox
+              width={data.width + 0.4}
+              height={data.height + 0.2}
+              depth={data.depth + 0.4}
+              position={[0, (data.height + 0.2) / 2, 0]}
+              emissiveColor={data.emissiveColor}
+              hovered={hovered}
+              wireframeOnly={true}
+            />
+          </>
+        )}
+
+        {data.buildingType === "residential" && (
+          <NeonBox
+            width={data.width}
+            height={data.height}
+            depth={data.depth}
+            position={[0, data.height / 2, 0]}
+            emissiveColor={data.emissiveColor}
+            hovered={hovered}
+            windowTex={windowTex}
+          />
+        )}
+      </group>
+    </group>
+  );
+}
+
+// React.memo prevents the building from re-rendering unless its hovered state (internal) 
+// or data (which is stable) changes.
+export default React.memo(BuildingComponent, (prev, next) => {
+  return prev.data.id === next.data.id;
+});

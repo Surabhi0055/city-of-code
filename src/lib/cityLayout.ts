@@ -13,60 +13,37 @@ export interface BuildingData {
   filePath: string;
   fileSize: number;
   folderName: string;
-  buildingType: "tower" | "block" | "slab" | "spire" | "antenna" | "stepped";
+  buildingType: "tower" | "slab" | "monument" | "bunker" | "residential";
 }
 
-const FILE_COLORS: Record<string, { base: string; emissive: string }> = {
-  ".ts":   { base: "#003333", emissive: "#00ffff" },
-  ".tsx":  { base: "#003344", emissive: "#00eeff" },
-  ".js":   { base: "#333300", emissive: "#ffee00" },
-  ".jsx":  { base: "#332200", emissive: "#ffcc00" },
-  ".css":  { base: "#330033", emissive: "#ff00ff" },
-  ".scss": { base: "#440033", emissive: "#ff44ff" },
-  ".json": { base: "#003322", emissive: "#00ff88" },
-  ".md":   { base: "#222244", emissive: "#aaaaff" },
-  ".html": { base: "#331100", emissive: "#ff6600" },
-  ".py":   { base: "#001133", emissive: "#4488ff" },
-  ".go":   { base: "#003333", emissive: "#00ffcc" },
-  ".rs":   { base: "#330000", emissive: "#ff3300" },
-  ".yml":  { base: "#332200", emissive: "#ffaa00" },
-  ".yaml": { base: "#332200", emissive: "#ffaa00" },
-  ".sh":   { base: "#003300", emissive: "#44ff44" },
-  ".svg":  { base: "#330044", emissive: "#ff88ff" },
-  ".env":  { base: "#330011", emissive: "#ff0055" },
-};
-
-function getFileColors(fileName: string) {
-  const ext = fileName.match(/\.[^.]+$/)?.[0] ?? "";
-  return FILE_COLORS[ext] ?? { base: "#111118", emissive: "#555566" };
+export interface RoadData {
+  id: string;
+  x: number;
+  z: number;
+  width: number;
+  length: number;
+  type: "highway" | "main" | "alley";
+  color: string;
 }
 
-function getFileHeight(size: number): number {
-  if (size < 100)   return 1.5 + Math.random() * 1;
-  if (size < 500)   return 3 + Math.random() * 2;
-  if (size < 2000)  return 6 + Math.random() * 4;
-  if (size < 10000) return 12 + Math.random() * 6;
-  if (size < 50000) return 20 + Math.random() * 8;
-  return 30 + Math.random() * 10;
-}
-
-function getBuildingFootprint(size: number, type: BuildingData["buildingType"]) {
-  if (size < 200)   return { width: 0.8 + Math.random() * 0.4, depth: 0.8 + Math.random() * 0.4 };
-  if (size < 1000)  return { width: 1.2 + Math.random() * 0.6, depth: 1.2 + Math.random() * 0.6 };
-  if (size < 5000)  return { width: 2.0 + Math.random() * 1.0, depth: 1.5 + Math.random() * 1.0 };
-  if (size < 20000) return { width: 3.0 + Math.random() * 1.5, depth: 2.5 + Math.random() * 1.5 };
-  if (type === "slab") return { width: 5 + Math.random() * 2, depth: 1.5 + Math.random() * 1 };
-  return { width: 3.5 + Math.random() * 2, depth: 3.5 + Math.random() * 2 };
-}
+const DISTRICT_COLORS = [
+  { base: "#050505", emissive: "#00ffff" }, // Cyan
+  { base: "#050505", emissive: "#ff00ff" }, // Magenta
+  { base: "#050505", emissive: "#ffff00" }, // Yellow
+  { base: "#050505", emissive: "#00ff88" }, // Green
+  { base: "#050505", emissive: "#ff4400" }, // Orange
+  { base: "#050505", emissive: "#4488ff" }, // Blue
+  { base: "#050505", emissive: "#ff0088" }, // Pink
+  { base: "#050505", emissive: "#88ff00" }, // Lime
+];
 
 function getBuildingType(size: number, fileName: string): BuildingData["buildingType"] {
   const ext = fileName.match(/\.[^.]+$/)?.[0] ?? "";
-  if (size > 30000) return "tower";
-  if (size > 15000) return "stepped";
-  if (size > 5000)  return "block";
-  if (size > 2000)  return "antenna";
-  if ([".md", ".txt", ".svg", ".json"].includes(ext)) return "slab";
-  return "spire";
+  if ([".md", ".txt"].includes(ext)) return "monument";
+  if ([".json", ".yml", ".yaml", ".env"].includes(ext)) return "bunker";
+  if ([".css", ".scss", ".html"].includes(ext)) return "slab";
+  if (size > 10000 && [".ts", ".tsx", ".js", ".jsx"].includes(ext)) return "tower";
+  return "residential"; // Default fallback
 }
 
 function seededRandom(seed: number) {
@@ -74,12 +51,41 @@ function seededRandom(seed: number) {
   return x - Math.floor(x);
 }
 
-export function buildCityLayout(files: GitHubFile[]): BuildingData[] {
-  const buildings: BuildingData[] = [];
+function getFileHeight(size: number, type: BuildingData["buildingType"], seed: number): number {
+  let baseHeight = Math.max(2, Math.log2(size / 100));
+  let multiplier = 1.0;
+  switch (type) {
+    case "tower": multiplier = 3.5; break; // Exaggerated skyline
+    case "monument": multiplier = 3.0; break;
+    case "slab": multiplier = 0.25; break; // Very low
+    case "bunker": multiplier = 0.3; break;
+    case "residential": multiplier = 1.0; break;
+  }
+  
+  let height = baseHeight * multiplier;
+  if (type === "bunker") height = Math.min(height, 3);
+  
+  const variance = 0.85 + seededRandom(seed) * 0.30;
+  return height * variance;
+}
 
-  // Group by top-level folder = districts
+function getBuildingFootprint(size: number, type: BuildingData["buildingType"]) {
+  switch (type) {
+    case "tower": return { width: 1.8, depth: 1.8 }; // Smaller footprints to allow tighter packing
+    case "monument": return { width: 1.5, depth: 1.5 };
+    case "slab": return { width: 2.0, depth: 1.5 };
+    case "bunker": return { width: 2.0, depth: 2.0 };
+    case "residential": return { width: 1.2, depth: 1.2 };
+  }
+}
+
+export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[]; roads: RoadData[] } {
+  const cappedFiles = files.slice(0, 150);
+  const buildings: BuildingData[] = [];
+  const roads: RoadData[] = [];
+
   const districts = new Map<string, GitHubFile[]>();
-  files.forEach((file) => {
+  cappedFiles.forEach((file) => {
     const parts = file.path.split("/");
     const folder = parts.length > 1 ? parts[0] : "root";
     if (!districts.has(folder)) districts.set(folder, []);
@@ -89,107 +95,205 @@ export function buildCityLayout(files: GitHubFile[]): BuildingData[] {
   const sortedDistricts = Array.from(districts.entries())
     .sort((a, b) => b[1].length - a[1].length);
 
-  // ============================================================
-  // SPIRAL PLACEMENT — districts radiate outward from the center
-  // This naturally creates a square/circular city shape
-  // ============================================================
-  const BLOCK_SIZE = 5;    // Pack buildings tightly into districts again
-  const STREET_GAP = 8;    // Keep a large gap between districts for the main roads
-  const JITTER = 0.5;      // Reduced jitter to keep roads straighter
+  const districtPositions: { name: string; x: number; z: number; w: number; d: number; ring: number, colorIndex: number, dfiles: GitHubFile[], cols: number, rows: number }[] = [];
 
-  // Place districts in a spiral pattern around center (0,0)
-  // Spiral directions: right, down, left, up
-  const spiralDirs = [
-    { dx: 1, dz: 0 },   // right
-    { dx: 0, dz: 1 },   // down
-    { dx: -1, dz: 0 },  // left
-    { dx: 0, dz: -1 },  // up
-  ];
-
-  // Calculate district block sizes
-  const districtMetas = sortedDistricts.map(([name, files]) => {
-    const cols = Math.ceil(Math.sqrt(files.length));
-    const rows = Math.ceil(files.length / cols);
-    // Size in world units
+  sortedDistricts.forEach(([name, dfiles], i) => {
+    // Math.min(7, dfiles.length) for BUILDINGS_PER_ROW = 7
+    const cols = Math.min(7, dfiles.length);
+    const rows = Math.ceil(dfiles.length / cols);
+    
+    // Tighter spacing: 2.2 for dense core, max 3.0 for outskirts
+    const ring = i < 2 ? 0 : (i < 6 ? 1 : 2);
+    const BLOCK_SIZE = ring === 0 ? 2.2 : (ring === 1 ? 2.5 : 3.0);
+    
     const w = cols * BLOCK_SIZE;
     const d = rows * BLOCK_SIZE;
-    return { name, files, cols, rows, w, d };
+    
+    // Greedy radial packer for tight gaps
+    const gap = 3.0;
+    let found = false;
+    let rad = 0;
+    let angle = 0;
+    let x = 0, z = 0;
+    
+    while (!found) {
+      x = Math.cos(angle) * rad;
+      z = Math.sin(angle) * rad;
+      let overlap = false;
+      for (const p of districtPositions) {
+        if (Math.abs(x - p.x) < (w + p.w) / 2 + gap && 
+            Math.abs(z - p.z) < (d + p.d) / 2 + gap) {
+          overlap = true;
+          break;
+        }
+      }
+      if (!overlap) {
+        found = true;
+      } else {
+        angle += 0.4;
+        if (angle > Math.PI * 2) {
+          angle = 0;
+          rad += 1.0;
+        }
+      }
+    }
+    
+    districtPositions.push({ 
+      name, x, z, w, d, ring, colorIndex: i % 8, dfiles, cols, rows 
+    });
   });
 
-  // Spiral placement of district origins
-  const districtPositions: { x: number; z: number }[] = [];
-  let spiralX = 0, spiralZ = 0;
-  let spiralDir = 0;
-  let spiralStepSize = 1;
-  let spiralStepsTaken = 0;
-  let spiralTurns = 0;
+  let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+  districtPositions.forEach(pos => {
+    if (pos.x - pos.w / 2 < minX) minX = pos.x - pos.w / 2;
+    if (pos.x + pos.w / 2 > maxX) maxX = pos.x + pos.w / 2;
+    if (pos.z - pos.d / 2 < minZ) minZ = pos.z - pos.d / 2;
+    if (pos.z + pos.d / 2 > maxZ) maxZ = pos.z + pos.d / 2;
+  });
 
-  for (let i = 0; i < districtMetas.length; i++) {
-    const meta = districtMetas[i];
+  const cityWidth = (maxX - minX) + 20;
+  const cityDepth = (maxZ - minZ) + 20;
+  const centerX = (maxX + minX) / 2;
+  const centerZ = (maxZ + minZ) / 2;
 
-    // Place this district centered at (spiralX, spiralZ)
-    const originX = spiralX * (BLOCK_SIZE * 4 + STREET_GAP);
-    const originZ = spiralZ * (BLOCK_SIZE * 4 + STREET_GAP);
-    districtPositions.push({ x: originX, z: originZ });
+  // 1. GENERATE ROADS FIRST
+  // Highways - Dark grey asphalt
+  roads.push({ id: `highway-h`, x: centerX, z: centerZ, width: cityWidth, length: 8, type: "highway", color: "#2a2a3a" });
+  roads.push({ id: `highway-v`, x: centerX, z: centerZ, width: 8, length: cityDepth, type: "highway", color: "#2a2a3a" });
 
-    // Move to next spiral position
-    spiralX += spiralDirs[spiralDir].dx;
-    spiralZ += spiralDirs[spiralDir].dz;
-    spiralStepsTaken++;
-
-    if (spiralStepsTaken >= spiralStepSize) {
-      spiralStepsTaken = 0;
-      spiralDir = (spiralDir + 1) % 4;
-      spiralTurns++;
-      if (spiralTurns % 2 === 0) spiralStepSize++;
+  const xGaps = new Set<number>();
+  const zGaps = new Set<number>();
+  
+  for (let i = 0; i < districtPositions.length; i++) {
+    for (let j = i + 1; j < districtPositions.length; j++) {
+      const a = districtPositions[i];
+      const b = districtPositions[j];
+      const aMinX = a.x - a.w/2, aMaxX = a.x + a.w/2;
+      const bMinX = b.x - b.w/2, bMaxX = b.x + b.w/2;
+      const aMinZ = a.z - a.d/2, aMaxZ = a.z + a.d/2;
+      const bMinZ = b.z - b.d/2, bMaxZ = b.z + b.d/2;
+      
+      if (Math.max(aMinZ, bMinZ) < Math.min(aMaxZ, bMaxZ)) {
+        if (a.name !== b.name) {
+          if (aMaxX < bMinX) xGaps.add((aMaxX + bMinX) / 2);
+          if (bMaxX < aMinX) xGaps.add((bMaxX + aMinX) / 2);
+        }
+      }
+      
+      if (Math.max(aMinX, bMinX) < Math.min(aMaxX, bMaxX)) {
+        if (a.name !== b.name) {
+          if (aMaxZ < bMinZ) zGaps.add((aMaxZ + bMinZ) / 2);
+          if (bMaxZ < aMinZ) zGaps.add((bMaxZ + aMinZ) / 2);
+        }
+      }
     }
   }
 
-  // Now place buildings within each district
-  districtMetas.forEach((meta, districtIndex) => {
-    const pos = districtPositions[districtIndex];
-    const { files: districtFiles, cols } = meta;
+  // Main Roads - Darker grey asphalt
+  Array.from(xGaps).forEach((gapX, i) => {
+    if (Math.abs(gapX - centerX) > 8) {
+      roads.push({ id: `main-v-${i}`, x: gapX, z: centerZ, width: 4, length: cityDepth, type: "main", color: "#1e1e2e" });
+    }
+  });
 
-    // Center the district's buildings around the district origin
-    const halfW = (cols * BLOCK_SIZE) / 2;
-    const rows = Math.ceil(districtFiles.length / cols);
-    const halfD = (rows * BLOCK_SIZE) / 2;
+  Array.from(zGaps).forEach((gapZ, i) => {
+    if (Math.abs(gapZ - centerZ) > 8) {
+      roads.push({ id: `main-h-${i}`, x: centerX, z: gapZ, width: cityWidth, length: 4, type: "main", color: "#1e1e2e" });
+    }
+  });
 
-    districtFiles.forEach((file, i) => {
-      const col = i % cols;
-      const row = Math.floor(i / cols);
+  // Alleys - Near black asphalt, no center lines or edges, only for blocks > 20x20
+  districtPositions.forEach((pos) => {
+    if (pos.w > 20 && pos.d > 20) {
+      if (pos.w >= pos.d) {
+        roads.push({ id: `alley-v-${pos.name}`, x: pos.x, z: pos.z, width: 1.5, length: pos.d, type: "alley", color: "#141420" });
+      } else {
+        roads.push({ id: `alley-h-${pos.name}`, x: pos.x, z: pos.z, width: pos.w, length: 1.5, type: "alley", color: "#141420" });
+      }
+    }
+  });
+
+  // 2. ROAD BOUNDING BOXES FOR COLLISIONS
+  const roadBoxes = roads.map(r => {
+    const isHoriz = r.width > r.length;
+    return {
+      minX: r.x - r.width / 2,
+      maxX: r.x + r.width / 2,
+      minZ: r.z - r.length / 2,
+      maxZ: r.z + r.length / 2,
+      isHoriz,
+      ...r
+    };
+  });
+
+  // 3. PLACE BUILDINGS & AVOID COLLISIONS
+  const JITTER = 0.4; // Reduced jitter for tighter packing
+  
+  districtPositions.forEach((pos, districtIndex) => {
+    const BLOCK_SIZE = pos.ring === 0 ? 2.2 : (pos.ring === 1 ? 2.5 : 3.0);
+    const halfW = pos.w / 2;
+    const halfD = pos.d / 2;
+    
+    const colors = DISTRICT_COLORS[pos.colorIndex];
+
+    pos.dfiles.forEach((file, i) => {
+      const col = i % pos.cols;
+      const row = Math.floor(i / pos.cols);
 
       const fileName = file.path.split("/").pop() ?? file.path;
-      const height = getFileHeight(file.size);
       const type = getBuildingType(file.size, fileName);
-      const { width, depth } = getBuildingFootprint(file.size, type);
-      const colors = getFileColors(fileName);
-
-      // Position within district, centered
+      
       const seed = i + districtIndex * 100;
+      const height = getFileHeight(file.size, type, seed);
+      const { width: bw, depth: bd } = getBuildingFootprint(file.size, type);
+
       const jx = (seededRandom(seed) - 0.5) * JITTER;
       const jz = (seededRandom(seed + 1) - 0.5) * JITTER;
 
-      const x = pos.x + (col * BLOCK_SIZE - halfW) + BLOCK_SIZE / 2 + jx;
-      const z = pos.z + (row * BLOCK_SIZE - halfD) + BLOCK_SIZE / 2 + jz;
+      let bx = pos.x + (col * BLOCK_SIZE - halfW) + BLOCK_SIZE / 2 + jx;
+      let bz = pos.z + (row * BLOCK_SIZE - halfD) + BLOCK_SIZE / 2 + jz;
+
+      // Push off roads
+      roadBoxes.forEach(road => {
+        const padding = 0.5;
+        const rMinX = road.minX;
+        const rMaxX = road.maxX;
+        const rMinZ = road.minZ;
+        const rMaxZ = road.maxZ;
+        
+        const bMinX = bx - bw / 2;
+        const bMaxX = bx + bw / 2;
+        const bMinZ = bz - bd / 2;
+        const bMaxZ = bz + bd / 2;
+
+        if (bMinX < rMaxX && bMaxX > rMinX && bMinZ < rMaxZ && bMaxZ > rMinZ) {
+          if (road.isHoriz) {
+            if (bz < road.z) bz = road.z - road.length / 2 - bd / 2 - padding;
+            else bz = road.z + road.length / 2 + bd / 2 + padding;
+          } else {
+            if (bx < road.x) bx = road.x - road.width / 2 - bw / 2 - padding;
+            else bx = road.x + road.width / 2 + bw / 2 + padding;
+          }
+        }
+      });
 
       buildings.push({
         id: file.path,
-        x,
-        z,
+        x: bx,
+        z: bz,
         height,
-        width,
-        depth,
+        width: bw,
+        depth: bd,
         color: colors.base,
         emissiveColor: colors.emissive,
         fileName,
         filePath: file.path,
         fileSize: file.size,
-        folderName: meta.name,
+        folderName: pos.name,
         buildingType: type,
       });
     });
   });
 
-  return buildings;
+  return { buildings, roads };
 }
