@@ -39,8 +39,8 @@ function useWindowTexture(seed: string, height: number, emissiveColor: string) {
         const x = padding + c * (w + padding);
         const y = padding + r * (h + padding);
         
-        // Only a small percentage of windows are lit (performant & looks better)
-        if (random() < 0.20) {
+        // Only a small percentage of windows are lit, and ONLY on the top part of the building!
+        if (random() < 0.20 && r < rows * 0.35) {
           // Draw pure white so the material's emissive color dictates the final tint
           ctx.fillStyle = "#ffffff";
           ctx.globalAlpha = 0.7 + random() * 0.3; 
@@ -194,9 +194,9 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
             <mesh position={[0, data.height + 0.6, 0]}>
               <boxGeometry args={[data.width * 0.5, 1.2, data.depth * 0.5]} />
               <meshStandardMaterial
-                color={data.color}
-                emissive={data.emissiveColor}
-                emissiveIntensity={1.2}
+                color="#1a0011"
+                emissive="#ff00aa"
+                emissiveIntensity={1.5}
                 roughness={0.1}
                 metalness={0.9}
               />
@@ -227,11 +227,11 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
             {/* Slab Rooftop Structures */}
             <mesh position={[-data.width * 0.25, data.height + 0.3, 0]}>
               <boxGeometry args={[1.2, 0.6, 1.2]} />
-              <meshStandardMaterial color={data.color} emissive={data.emissiveColor} emissiveIntensity={0.6} roughness={0.2} metalness={0.8} />
+              <meshStandardMaterial color="#1a0011" emissive="#ff00aa" emissiveIntensity={1} roughness={0.2} metalness={0.8} />
             </mesh>
             <mesh position={[data.width * 0.25, data.height + 0.5, 0]}>
               <boxGeometry args={[0.8, 1, 0.8]} />
-              <meshStandardMaterial color={data.color} emissive={data.emissiveColor} emissiveIntensity={0.6} roughness={0.2} metalness={0.8} />
+              <meshStandardMaterial color="#1a0011" emissive="#ff00aa" emissiveIntensity={1} roughness={0.2} metalness={0.8} />
             </mesh>
           </>
         )}
@@ -260,9 +260,9 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
             <mesh position={[0, data.height + 1, 0]}>
               <coneGeometry args={[0.4, 2, 4]} />
               <meshStandardMaterial
-                color={data.color}
-                emissive={data.emissiveColor}
-                emissiveIntensity={2}
+                color="#1a0011"
+                emissive="#ff00aa"
+                emissiveIntensity={2.5}
                 roughness={0.1}
                 metalness={1}
               />
@@ -294,9 +294,9 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
             <mesh position={[data.width * 0.2, data.height + 0.4, 0]}>
               <boxGeometry args={[data.width * 0.3, 0.8, data.depth * 0.4]} />
               <meshStandardMaterial
-                color={data.color}
-                emissive={data.emissiveColor}
-                emissiveIntensity={0.8}
+                color="#1a0011"
+                emissive="#ff00aa"
+                emissiveIntensity={1.2}
                 roughness={0.3}
                 metalness={0.7}
               />

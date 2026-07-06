@@ -10,6 +10,15 @@ import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
 import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
 
+// Generate dummy data for the background city
+const dummyFiles = Array.from({ length: 150 }).map((_, i) => ({
+  path: `folder${i % 8}/file${i}.ts`,
+  size: 500 + Math.random() * 20000,
+  type: "file" as const,
+  sha: `dummy-sha-${i}`,
+}));
+const dummyCity = buildCityLayout(dummyFiles);
+
 export default function Home() {
   const [url, setUrl] = useState("");
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
@@ -108,160 +117,265 @@ export default function Home() {
   }
 
   return (
-    <main style={{ width: "100vw", height: "100vh", position: "relative" }}>
-      {/* Input UI — sits on top of the 3D canvas */}
-      <div
-        style={{
-          position: "absolute",
-          top: "24px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10,
-          display: "flex",
-          gap: "8px",
-          alignItems: "center",
-        }}
-      >
-        <input
-          type="text"
-          value={url}
-          onChange={(e) => setUrl(e.target.value)}
-          onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-          placeholder="https://github.com/owner/repo"
-          style={{
-            width: "340px",
-            padding: "10px 14px",
-            borderRadius: "8px",
-            border: "1px solid #00ffff44",
-            background: "rgba(0, 0, 0, 0.7)",
-            color: "#00ffff",
-            fontSize: "14px",
-            outline: "none",
-            backdropFilter: "blur(8px)",
-          }}
-        />
-        <button
-          onClick={handleGenerate}
-          disabled={loading}
-          style={{
-            padding: "10px 20px",
-            borderRadius: "8px",
-            border: "1px solid #00ffff",
-            background: loading
-              ? "rgba(0,255,255,0.1)"
-              : "rgba(0,255,255,0.15)",
-            color: "#00ffff",
-            fontSize: "14px",
-            cursor: loading ? "not-allowed" : "pointer",
-          }}
-        >
-          {loading ? "Building..." : "Generate City"}
-        </button>
-      </div>
+    <main style={{ 
+      width: "100vw", 
+      height: "100vh", 
+      position: "relative", 
+      display: "flex", 
+      overflow: "hidden", 
+      backgroundColor: "#040810",
+    }}>
+      
+      {/* Main Content Area */}
+      <div style={{ flex: 1, position: "relative" }}>
+        
+        {/* Project Info & Input UI (Terminal Style, No Card) */}
+        {!repoInfo && (
+          <div
+            style={{
+              position: "absolute",
+              top: "50%",
+              left: "50%",
+              transform: "translate(-50%, -50%)",
+              zIndex: 10,
+              width: "90%",
+              maxWidth: "800px",
+              fontFamily: "monospace",
+            }}
+          >
+            <div style={{ color: "#ff0088", fontSize: "1.2rem", marginBottom: "8px" }}>
+              $ &gt;&gt;
+            </div>
+            <h1 style={{ color: "#00aaff", fontSize: "2.5rem", margin: "0 0 16px 0", fontWeight: "normal", letterSpacing: "1px" }}>
+              Enter GitHub Repository URL to Visualize
+            </h1>
+            
+            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "24px" }}>
+              <span style={{ color: "#ff0088", fontSize: "1.5rem" }}>&gt;</span>
+              <input
+                type="text"
+                value={url}
+                onChange={(e) => setUrl(e.target.value)}
+                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+                placeholder="[https://github.com/username/repo]"
+                style={{
+                  flex: 1,
+                  padding: "16px 0",
+                  border: "none",
+                  borderBottom: "2px solid #008b8b",
+                  background: "transparent",
+                  color: "#ff0088",
+                  fontSize: "1.5rem",
+                  fontFamily: "monospace",
+                  outline: "none",
+                }}
+              />
+            </div>
 
-      {/* Loading overlay */}
-      {loading && (
+            <div style={{ display: "flex", gap: "16px", marginTop: "32px", fontSize: "1.2rem" }}>
+              <button
+                onClick={handleGenerate}
+                disabled={loading}
+                style={{
+                  padding: "12px 24px",
+                  border: "1px solid #ff0088",
+                  background: "transparent",
+                  color: "#ff0088",
+                  fontFamily: "monospace",
+                  fontSize: "1.2rem",
+                  cursor: loading ? "not-allowed" : "pointer",
+                  transition: "all 0.3s ease",
+                }}
+                onMouseEnter={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "rgba(255, 0, 136, 0.2)";
+                    e.currentTarget.style.boxShadow = "0 0 15px rgba(255, 0, 136, 0.4)";
+                  }
+                }}
+                onMouseLeave={(e) => {
+                  if (!loading) {
+                    e.currentTarget.style.background = "transparent";
+                    e.currentTarget.style.boxShadow = "none";
+                  }
+                }}
+              >
+                {loading ? "[BUILDING...]" : "[GENERATE]"}
+              </button>
+              
+              <div style={{ color: "#008b8b", display: "flex", alignItems: "center" }}>
+                | [Examples: `react`, `linux`, `rust`] | [Help]
+              </div>
+            </div>
+            
+            <div style={{ color: "#008b8b", marginTop: "24px", fontSize: "1rem" }}>
+              [SYSTEM: Awaiting input...] [NET: Connected] [LOC: Cybernet]
+            </div>
+          </div>
+        )}
+
+        {/* Input UI for when city is loaded */}
+        {repoInfo && (
+          <div
+            style={{
+              position: "absolute",
+              top: "24px",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 10,
+              display: "flex",
+              gap: "8px",
+              alignItems: "center",
+            }}
+          >
+            <input
+              type="text"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
+              placeholder="https://github.com/owner/repo"
+              style={{
+                width: "340px",
+                padding: "10px 14px",
+                borderRadius: "8px",
+                border: "1px solid #004346",
+                background: "rgba(4, 8, 16, 0.8)",
+                color: "#01949A",
+                fontSize: "14px",
+                outline: "none",
+                backdropFilter: "blur(8px)",
+              }}
+            />
+            <button
+              onClick={handleGenerate}
+              disabled={loading}
+              style={{
+                padding: "10px 20px",
+                borderRadius: "8px",
+                border: "1px solid #01949A",
+                background: loading
+                  ? "rgba(1, 148, 154, 0.1)"
+                  : "rgba(1, 148, 154, 0.2)",
+                color: "#01949A",
+                fontSize: "14px",
+                cursor: loading ? "not-allowed" : "pointer",
+              }}
+            >
+              {loading ? "Building..." : "Generate City"}
+            </button>
+          </div>
+        )}
+
+        {/* Loading overlay */}
+        {loading && (
+          <div style={{
+            position: "absolute",
+            inset: 0,
+            zIndex: 20,
+            display: "flex",
+            flexDirection: "column",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(4, 8, 16, 0.9)",
+            backdropFilter: "blur(8px)",
+            color: "#01949A",
+            fontFamily: "monospace",
+            gap: "12px",
+          }}>
+            <div style={{
+              width: "50px",
+              height: "50px",
+              border: "3px solid #004346",
+              borderTop: "3px solid #E52F20",
+              borderRadius: "50%",
+              animation: "spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite",
+            }} />
+            <p style={{ fontSize: "16px", margin: 0, letterSpacing: "2px" }}>GENERATING CITY...</p>
+            <p style={{ fontSize: "12px", color: "#004346", margin: 0 }}>
+              FETCHING REPO STRUCTURE
+            </p>
+          </div>
+        )}
+
+        {/* Error message */}
+        {error && (
+          <div
+            style={{
+              position: "absolute",
+              top: repoInfo ? "80px" : "calc(50% + 140px)",
+              left: "50%",
+              transform: "translateX(-50%)",
+              zIndex: 10,
+              color: "#E52F20",
+              fontSize: "14px",
+              background: "rgba(4, 8, 16, 0.9)",
+              padding: "12px 24px",
+              borderRadius: "8px",
+              border: "1px solid #E52F20",
+              boxShadow: "0 0 20px rgba(229, 47, 32, 0.2)",
+            }}
+          >
+            {error}
+          </div>
+        )}
+
+        {/* 3D Canvas */}
         <div style={{
           position: "absolute",
           inset: 0,
-          zIndex: 20,
-          display: "flex",
-          flexDirection: "column",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "rgba(5, 5, 16, 0.85)",
-          backdropFilter: "blur(4px)",
-          color: "#00ffff",
-          fontFamily: "monospace",
-          gap: "12px",
+          zIndex: 0,
+          filter: !repoInfo ? "brightness(0.65)" : "none", // Removed blur
+          transition: "filter 1s ease",
         }}>
-          <div style={{
-            width: "40px",
-            height: "40px",
-            border: "2px solid #00ffff22",
-            borderTop: "2px solid #00ffff",
-            borderRadius: "50%",
-            animation: "spin 1s linear infinite",
-          }} />
-          <p style={{ fontSize: "14px", margin: 0 }}>Generating city...</p>
-          <p style={{ fontSize: "12px", color: "#00ffff66", margin: 0 }}>
-            Fetching repo structure
-          </p>
+          <Canvas
+            camera={{ position: [30, 20, 30], fov: 50 }}
+            gl={{
+              antialias: true,
+              toneMapping: THREE.ACESFilmicToneMapping,
+              powerPreference: "high-performance",
+            }}
+          >
+            <ambientLight intensity={1.5} color="#111a1a" />
+            <pointLight position={[0, 80, 0]}    color="#01949A" intensity={3} distance={400} />
+            <pointLight position={[80, 50, 80]}  color="#E52F20" intensity={2} distance={300} />
+            <pointLight position={[-60, 40, -60]} color="#004346" intensity={1.5} distance={300} />
+
+            {(() => {
+              const displayBuildings = buildings.length > 0 ? buildings : dummyCity.buildings;
+              const displayRoads = buildings.length > 0 ? roads : dummyCity.roads;
+              const displayDistricts = buildings.length > 0 ? districts : dummyCity.districts;
+              
+              let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
+              displayBuildings.forEach(b => {
+                if (b.x - b.width / 2 < minX) minX = b.x - b.width / 2;
+                if (b.x + b.width / 2 > maxX) maxX = b.x + b.width / 2;
+                if (b.z - b.depth / 2 < minZ) minZ = b.z - b.depth / 2;
+                if (b.z + b.depth / 2 > maxZ) maxZ = b.z + b.depth / 2;
+              });
+              let gridSize = Math.max(maxX - minX, maxZ - minZ) + 20;
+              if (gridSize < 180) gridSize = 180; // Ensure camera is not engulfed by fog!
+              
+              return (
+                <CyberCity gridSize={gridSize} buildings={displayBuildings} roads={displayRoads} districts={displayDistricts} isHomepage={!repoInfo} />
+              );
+            })()}
+            <CityBuildings
+              buildings={buildings.length > 0 ? buildings : dummyCity.buildings}
+              onBuildingClick={handleSelectBuilding}
+            />
+          </Canvas>
         </div>
-      )}
-
-      {/* Error message */}
-      {error && (
-        <div
-          style={{
-            position: "absolute",
-            top: "80px",
-            left: "50%",
-            transform: "translateX(-50%)",
-            zIndex: 10,
-            color: "#ff4444",
-            fontSize: "13px",
-            background: "rgba(0,0,0,0.7)",
-            padding: "8px 16px",
-            borderRadius: "8px",
-            border: "1px solid #ff444444",
-          }}
-        >
-          {error}
-        </div>
-      )}
-
-      {/* 3D Canvas */}
-      <Canvas
-        camera={{ position: [120, 90, 120], fov: 50 }}
-        gl={{
-          antialias: true,
-          toneMapping: THREE.ACESFilmicToneMapping,
-          powerPreference: "high-performance",
-        }}
-      >
-        {/* Lighting — reduced global lighting, removed directional, kept within budget */}
-        <ambientLight intensity={1.5} color="#1a1a3a" />
-        <pointLight position={[0, 80, 0]}    color="#00ffff" intensity={3} distance={400} />
-        <pointLight position={[80, 50, 80]}  color="#ff00ff" intensity={2} distance={300} />
-        <pointLight position={[-60, 40, -60]} color="#4400ff" intensity={1.5} distance={300} />
-
-        {(() => {
-          if (buildings.length === 0) {
-            return (
-              <>
-                <CyberCity gridSize={80} buildings={[]} roads={[]} districts={[]} />
-              </>
-            );
-          }
-          let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-          buildings.forEach(b => {
-            if (b.x - b.width / 2 < minX) minX = b.x - b.width / 2;
-            if (b.x + b.width / 2 > maxX) maxX = b.x + b.width / 2;
-            if (b.z - b.depth / 2 < minZ) minZ = b.z - b.depth / 2;
-            if (b.z + b.depth / 2 > maxZ) maxZ = b.z + b.depth / 2;
-          });
-          const gridSize = Math.max(maxX - minX, maxZ - minZ) + 20;
-          return (
-            <>
-              <CyberCity gridSize={gridSize} buildings={buildings} roads={roads} districts={districts} />
-            </>
-          );
-        })()}
-        <CityBuildings
-          buildings={buildings}
-          onBuildingClick={handleSelectBuilding}
-        />
-      </Canvas>
-      
-      {/* AI Info Panel */}
-      <InfoPanel
-        building={selectedBuilding}
-        explanation={explanation}
-        isLoading={isAnalyzing}
-        onClose={handleClosePanel}
-        onAnalyze={() => selectedBuilding && handleBuildingClick(selectedBuilding)}
-      />
+        
+        {/* AI Info Panel */}
+        {repoInfo && (
+          <InfoPanel
+            building={selectedBuilding}
+            explanation={explanation}
+            isLoading={isAnalyzing}
+            onClose={handleClosePanel}
+            onAnalyze={() => selectedBuilding && handleBuildingClick(selectedBuilding)}
+          />
+        )}
+      </div>
     </main>
   );
 }

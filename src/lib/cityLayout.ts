@@ -27,14 +27,14 @@ export interface RoadData {
 }
 
 const DISTRICT_COLORS = [
-  { base: "#001a00", emissive: "#00ff88" },  // green
-  { base: "#00001a", emissive: "#00ffff" },  // cyan
-  { base: "#1a001a", emissive: "#ff00ff" },  // magenta
-  { base: "#1a1a00", emissive: "#ffff00" },  // yellow
-  { base: "#1a0000", emissive: "#ff4400" },  // orange
-  { base: "#00001a", emissive: "#4488ff" },  // blue
+  { base: "#000a1f", emissive: "#0066ff" },  // blue
   { base: "#1a0011", emissive: "#ff0088" },  // pink
-  { base: "#001a0d", emissive: "#00ffaa" },  // teal
+  { base: "#110008", emissive: "#ff0055" },  // pink (was red)
+  { base: "#001115", emissive: "#008b8b" },  // dark cyan
+  { base: "#000a1f", emissive: "#00aaff" },  // light blue
+  { base: "#11000b", emissive: "#ff33aa" },  // hot pink
+  { base: "#1a0011", emissive: "#ff33aa" },  // light pink (was light red)
+  { base: "#001a1a", emissive: "#005555" },  // dark cyan/teal
 ];
 
 function getBuildingType(size: number, fileName: string): BuildingData["buildingType"] {

@@ -37,10 +37,11 @@ interface CyberCityProps {
   gridSize: number;
   buildings: BuildingData[];
   roads: RoadData[];
-  districts?: any[];
+  districts?: DistrictData[];
+  isHomepage?: boolean;
 }
 
-export default function CyberCity({ gridSize, buildings, roads, districts = [] }: CyberCityProps) {
+export default function CyberCity({ gridSize, buildings, roads, districts = [], isHomepage = false }: CyberCityProps) {
   // Center orbit on the middle of buildings
   const center = useMemo(() => {
     if (buildings.length === 0) return [0, 0, 0] as [number, number, number];
@@ -52,19 +53,21 @@ export default function CyberCity({ gridSize, buildings, roads, districts = [] }
   return (
     <>
       {/* Colorful misty haze reflecting the ground grid */}
-      <fog attach="fog" args={["#1a052a", gridSize * 0.4, gridSize * 2.5]} />
+      <fog attach="fog" args={["#040810", gridSize * 0.4, gridSize * 2.5]} />
 
       {/* Dark background makes the lighter fog visible */}
-      <color attach="background" args={["#050810"]} />
+      <color attach="background" args={["#040810"]} />
 
       <OrbitControls
-        enablePan={true}
-        enableZoom={true}
-        enableRotate={true}
+        enablePan={!isHomepage}
+        enableZoom={!isHomepage}
+        enableRotate={!isHomepage}
         minDistance={3}
         maxDistance={gridSize * 3}
         maxPolarAngle={Math.PI / 2.1}
         target={center}
+        autoRotate={isHomepage}
+        autoRotateSpeed={0.6}
       />
 
       <CityGrid gridSize={gridSize} roads={roads} districts={districts} />
