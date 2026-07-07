@@ -57,15 +57,15 @@ const CircuitGridShader = {
     
     void main() {
       // Major grid - larger spacing
-      float majorSpacing = 5.0;
-      float majorThickness = 0.04;
+      float majorSpacing = 10.0;
+      float majorThickness = 0.015;
       float mx = step(abs(fract(vWorldPos.x / majorSpacing + 0.5) - 0.5), majorThickness / (2.0 * majorSpacing));
       float mz = step(abs(fract(vWorldPos.z / majorSpacing + 0.5) - 0.5), majorThickness / (2.0 * majorSpacing));
       float majorGrid = max(mx, mz);
 
       // Minor traces - less dense, larger rectangles
-      float minorSpacing = 1.0;
-      float minorThickness = 0.02;
+      float minorSpacing = 2.0;
+      float minorThickness = 0.01;
       
       // X-directed minor lines (placed along Z)
       float zMinorId = floor(vWorldPos.z / minorSpacing);
@@ -87,12 +87,20 @@ const CircuitGridShader = {
       float distToCenter = length(vWorldPos.xz);
       float centerFade = smoothstep(80.0, 40.0, distToCenter);
 
-      // Combine grids - make the big squares subtle (0.4) and the inside small lines brighter (1.0)
-      float finalAlpha = max(majorGrid * 0.4, minorGrid * 1.0) * camFade * centerFade;
+      // Combine grids - make the big squares subtle (0.2) and the inside small lines brighter (0.5)
+      float finalAlpha = max(majorGrid * 0.2, minorGrid * 0.5) * camFade * centerFade;
       if (finalAlpha < 0.01) discard;
 
-      // Global Cyan grid
-      vec3 baseColor = vec3(0.0, 0.8, 1.0); // Cyan
+      // Global multi-colored grid
+      vec3 c1 = vec3(0.0, 1.0, 1.0);
+      vec3 c2 = vec3(1.0, 0.0, 1.0);
+      vec3 c3 = vec3(0.2, 0.2, 1.0);
+      vec3 c4 = vec3(0.6, 0.0, 1.0);
+      float nx = sin(vWorldPos.x * 0.05);
+      float nz = cos(vWorldPos.z * 0.05);
+      vec3 colorA = mix(c1, c2, smoothstep(-1.0, 1.0, nx));
+      vec3 colorB = mix(c3, c4, smoothstep(-1.0, 1.0, nz));
+      vec3 baseColor = mix(colorA, colorB, smoothstep(-1.0, 1.0, nx * nz));
 
       gl_FragColor = vec4(baseColor * 1.5, finalAlpha);
     }
@@ -101,35 +109,77 @@ const CircuitGridShader = {
 
 const roadStencilMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
 roadStencilMat.stencilWrite = true;
-roadStencilMat.stencilRef = 1;
 roadStencilMat.stencilFunc = THREE.AlwaysStencilFunc;
-roadStencilMat.stencilZPass = THREE.ReplaceStencilOp;
+roadStencilMat.stencilZPass = THREE.IncrementWrapStencilOp;
+
+function StreetLight({ position, rotation, color }: { position: [number, number, number], rotation: [number, number, number], color: string }) {
+  const lightColor = "#ffaa00"; // Golden glow
+  return (
+    <group position={position} rotation={rotation}>
+      {/* Dark pole */}
+      <mesh position={[0, 0.4, 0]}>
+        <cylinderGeometry args={[0.008, 0.008, 0.8]} />
+        <meshBasicMaterial color="#1a1a1a" />
+      </mesh>
+      {/* Solid Lamp Head */}
+      <mesh position={[0.04, 0.8, 0]} rotation={[0, 0, Math.PI / 2]}>
+        <cylinderGeometry args={[0.015, 0.015, 0.08]} />
+        <meshBasicMaterial color="#ffffff" />
+      </mesh>
+      {/* Soft glow falloff */}
+      <mesh position={[0.04, 0.8, 0]}>
+        <sphereGeometry args={[0.08]} />
+        <meshBasicMaterial color={lightColor} transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+      {/* Flat circular pool of light on road */}
+      <mesh position={[0.04, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
+        <circleGeometry args={[0.4, 16]} />
+        <meshBasicMaterial color={lightColor} transparent opacity={0.35} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
 
 export default function CityGrid({ gridSize, roads = [], districts = [] }: CityGridProps) {
   const planeGeom = useMemo(() => new THREE.PlaneGeometry(1, 1), []);
 
+  const intersections = useMemo(() => {
+    const list = [];
+    const horizRoads = roads.filter(r => r.width > r.length && r.type !== "highway");
+    const vertRoads = roads.filter(r => r.length > r.width && r.type !== "highway");
+    for (const h of horizRoads) {
+      for (const v of vertRoads) {
+        if (v.x > h.x - h.width/2 && v.x < h.x + h.width/2 &&
+            h.z > v.z - v.length/2 && h.z < v.z + v.length/2) {
+          list.push({ x: v.x, z: h.z, w: v.width, d: h.length });
+        }
+      }
+    }
+    return list;
+  }, [roads]);
+
   return (
     <>
-      {/* Ground plane — wet road reflective surface */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]} frustumCulled={true}>
+      {/* Ground plane — wet road reflective surface (Asphalt) */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
         <MeshReflectorMaterial
-          blur={[100, 100]}
+          blur={[300, 300]} // Massive blur for soft light reflection
           resolution={1024}
-          mixBlur={0.2}
-          mixStrength={8.0}
-          roughness={0.1}
+          mixBlur={2.5}     // High mix blur
+          mixStrength={25.0} // Very strong reflection
+          roughness={0.2}   // Slightly rougher asphalt
           depthScale={1.2}
           minDepthThreshold={0.4}
           maxDepthThreshold={1.4}
-          color="#020208"
-          metalness={0.9}
+          color="#030508"
+          metalness={0.8}
           mirror={1}
         />
       </mesh>
 
       {/* The global circuit grid */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} frustumCulled={true}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
         <shaderMaterial 
           vertexShader={CircuitGridShader.vertexShader}
@@ -144,7 +194,7 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
 
       {/* District Ground Plates — subtle color tint */}
       {districts.map((d, i) => (
-        <mesh key={`district-${i}`} position={[d.x, -0.02, d.z]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={true}>
+        <mesh key={`district-${i}`} position={[d.x, 0.002, d.z]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={true}>
           <planeGeometry args={[d.w, d.d]} />
           <meshBasicMaterial color={d.color} transparent opacity={0.04} depthWrite={false} />
         </mesh>
@@ -157,95 +207,167 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
         const isAlley = road.type === "alley";
         const isHoriz = road.width > road.length;
         
-        const roadY = isHighway ? 0.025 : isMain ? 0.02 : 0.015;
+        const isElevated = isHighway;
+        const baseRoadY = isElevated ? 1.5 : 0.0;
+        const roadY = baseRoadY;
+        const lineY = roadY + 0.003;
 
         // Road surface — very dark, slightly reflective
         const surfaceW = road.width;
         const surfaceL = road.length;
 
-        // Neon lane line dimensions
-        const lineThickness = isHighway ? 0.12 : isMain ? 0.08 : 0.05;
+        // Dual track offset from center
+        const trackOffset = isHighway ? 0.4 : isMain ? 0.25 : 0.12;
+        const lineThickness = isHighway ? 0.14 : isMain ? 0.09 : 0.05;
         const lineLength = isHoriz ? surfaceW : surfaceL;
-        
-        // Edge lines offset from center
-        const edgeOffset = isHoriz 
-          ? (surfaceL / 2 - 0.15)
-          : (surfaceW / 2 - 0.15);
+        const crossW = isHoriz ? surfaceL : surfaceW;
+        const edgeOffset = crossW / 2 - 0.05;
+
+        // Specific road colors as requested
+        const trackColor = "#00ffff"; // Cyan center tracks
+        const edgeColor = "#ff00ff"; // Pink borders
+
+        // Generate street lights
+        const lights = [];
+        if (!isAlley) {
+           const lightSpacing = 2.5;
+           const segments = Math.max(1, Math.floor(lineLength / lightSpacing));
+           for (let j = 1; j < segments; j++) {
+              const offsetAlong = -lineLength / 2 + (j * (lineLength / segments));
+              let px1, pz1, px2, pz2;
+              let rot1: [number, number, number], rot2: [number, number, number];
+              if (isHoriz) {
+                 px1 = road.x + offsetAlong; pz1 = road.z - edgeOffset - 0.05; rot1 = [0, 0, 0];
+                 px2 = road.x + offsetAlong; pz2 = road.z + edgeOffset + 0.05; rot2 = [0, Math.PI, 0];
+              } else {
+                 px1 = road.x - edgeOffset - 0.05; pz1 = road.z + offsetAlong; rot1 = [0, Math.PI/2, 0];
+                 px2 = road.x + edgeOffset + 0.05; pz2 = road.z + offsetAlong; rot2 = [0, -Math.PI/2, 0];
+              }
+              
+              const inIntersection = (x: number, z: number) => {
+                 return intersections.some(ix => 
+                    Math.abs(x - ix.x) < ix.w/2 + 0.9 && 
+                    Math.abs(z - ix.z) < ix.d/2 + 0.9
+                 );
+              };
+
+              if (!inIntersection(px1, pz1)) {
+                 lights.push(<StreetLight key={`l1-${j}`} position={[px1 - road.x, roadY, pz1 - road.z]} rotation={rot1} color={edgeColor} />);
+              }
+              if (!inIntersection(px2, pz2)) {
+                 lights.push(<StreetLight key={`l2-${j}`} position={[px2 - road.x, roadY, pz2 - road.z]} rotation={rot2} color={edgeColor} />);
+              }
+           }
+        }
 
         return (
           <group key={`${road.id}-${i}`} position={[road.x, 0, road.z]}>
-            {/* Stencil cutout so the grid isn't drawn on the road, leaving pure black reflection */}
-            <mesh 
-              position={[0, roadY, 0]} 
-              rotation={[-Math.PI / 2, 0, 0]} 
-              geometry={planeGeom} 
-              scale={[surfaceW, surfaceL, 1]} 
-              frustumCulled={true}
-              material={roadStencilMat}
-            />
+            {/* Stencil cutout for ground roads ONLY */}
+            {!isElevated && (
+              <mesh 
+                position={[0, roadY, 0]} 
+                rotation={[-Math.PI / 2, 0, 0]} 
+                geometry={planeGeom} 
+                scale={[surfaceW, surfaceL, 1]} 
+                frustumCulled={true}
+                material={roadStencilMat}
+                renderOrder={0}
+              />
+            )}
 
-            {/* Neon center line — NEON CYAN (priority color) */}
+            {/* Dark shiny road surface removed since global ground is the asphalt */}
+
+            {isElevated && (
+              <>
+                {/* Bridge Pillars */}
+                <mesh position={[isHoriz ? -surfaceL/3 : 0, -roadY/2, isHoriz ? 0 : -surfaceL/3]}>
+                   <cylinderGeometry args={[0.15, 0.15, roadY]} />
+                   <meshBasicMaterial color="#050505" />
+                </mesh>
+                <mesh position={[isHoriz ? surfaceL/3 : 0, -roadY/2, isHoriz ? 0 : surfaceL/3]}>
+                   <cylinderGeometry args={[0.15, 0.15, roadY]} />
+                   <meshBasicMaterial color="#050505" />
+                </mesh>
+              </>
+            )}
+
+            {/* Track 1 */}
             <mesh 
-              position={[0, roadY + 0.005, 0]} 
+              position={isHoriz ? [0, lineY, -trackOffset] : [-trackOffset, lineY, 0]} 
               rotation={[-Math.PI / 2, 0, 0]} 
               geometry={planeGeom} 
               scale={isHoriz ? [lineLength, lineThickness, 1] : [lineThickness, lineLength, 1]} 
               frustumCulled={true}
+              renderOrder={1}
             >
-              <meshBasicMaterial color="#00ffff" toneMapped={false} transparent opacity={0.95} />
+              <meshBasicMaterial color={trackColor} toneMapped={false} transparent opacity={0.95} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
             </mesh>
 
-            {/* Center line glow — soft cyan halo */}
+            {/* Track 2 */}
             <mesh 
-              position={[0, roadY + 0.004, 0]} 
+              position={isHoriz ? [0, lineY, trackOffset] : [trackOffset, lineY, 0]} 
               rotation={[-Math.PI / 2, 0, 0]} 
               geometry={planeGeom} 
-              scale={isHoriz ? [lineLength, lineThickness * 7, 1] : [lineThickness * 7, lineLength, 1]} 
+              scale={isHoriz ? [lineLength, lineThickness, 1] : [lineThickness, lineLength, 1]} 
               frustumCulled={true}
+              renderOrder={1}
             >
-              <meshBasicMaterial color="#00ffff" toneMapped={false} transparent opacity={0.07} depthWrite={false} blending={THREE.AdditiveBlending} />
+              <meshBasicMaterial color={trackColor} toneMapped={false} transparent opacity={0.95} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
+            </mesh>
+
+            {/* Tracks glow */}
+            <mesh 
+              position={[0, lineY - 0.001, 0]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              geometry={planeGeom} 
+              scale={isHoriz ? [lineLength, trackOffset * 2.5, 1] : [trackOffset * 2.5, lineLength, 1]} 
+              frustumCulled={true}
+              renderOrder={1}
+            >
+              <meshBasicMaterial color={trackColor} toneMapped={false} transparent opacity={0.10} depthWrite={false} blending={THREE.AdditiveBlending} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
             </mesh>
 
             {!isAlley && (
               <>
-                {/* Edge line 1 — NEON BLUE */}
+                {/* Edge line 1 */}
                 <mesh 
-                  position={isHoriz ? [0, roadY + 0.005, -edgeOffset] : [-edgeOffset, roadY + 0.005, 0]} 
+                  position={isHoriz ? [0, lineY, -edgeOffset] : [-edgeOffset, lineY, 0]} 
                   rotation={[-Math.PI / 2, 0, 0]} 
                   geometry={planeGeom} 
-                  scale={isHoriz ? [lineLength, lineThickness * 0.7, 1] : [lineThickness * 0.7, lineLength, 1]} 
+                  scale={isHoriz ? [lineLength, 0.05, 1] : [0.05, lineLength, 1]} 
                   frustumCulled={true}
+                  renderOrder={1}
                 >
-                  <meshBasicMaterial color="#0066ff" toneMapped={false} transparent opacity={0.9} />
+                  <meshBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={0.9} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
                 </mesh>
 
-                {/* Edge line 2 — NEON BLUE */}
+                {/* Edge line 2 */}
                 <mesh 
-                  position={isHoriz ? [0, roadY + 0.005, edgeOffset] : [edgeOffset, roadY + 0.005, 0]} 
+                  position={isHoriz ? [0, lineY, edgeOffset] : [edgeOffset, lineY, 0]} 
                   rotation={[-Math.PI / 2, 0, 0]} 
                   geometry={planeGeom} 
-                  scale={isHoriz ? [lineLength, lineThickness * 0.7, 1] : [lineThickness * 0.7, lineLength, 1]} 
+                  scale={isHoriz ? [lineLength, 0.05, 1] : [0.05, lineLength, 1]} 
                   frustumCulled={true}
+                  renderOrder={1}
                 >
-                  <meshBasicMaterial color="#0066ff" toneMapped={false} transparent opacity={0.9} />
-                </mesh>
-
-                {/* Road surface glow bleed */}
-                <mesh 
-                  position={[0, roadY + 0.003, 0]} 
-                  rotation={[-Math.PI / 2, 0, 0]} 
-                  geometry={planeGeom} 
-                  scale={[surfaceW, surfaceL, 1]} 
-                  frustumCulled={true}
-                >
-                  <meshBasicMaterial color="#002244" toneMapped={false} transparent opacity={0.14} depthWrite={false} blending={THREE.AdditiveBlending} />
+                  <meshBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={0.9} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
                 </mesh>
               </>
             )}
+            
+            {/* Street Lights */}
+            {lights}
           </group>
         );
       })}
+
+      {/* Intersection Tiles to mask out overlapping neon tracks */}
+      {intersections.map((ix, i) => (
+        <mesh key={`ix-${i}`} position={[ix.x, 0.005, ix.z]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={true} renderOrder={2}>
+          <planeGeometry args={[ix.w, ix.d]} />
+          <meshBasicMaterial color="#020305" transparent={true} opacity={1.0} depthWrite={false} blending={THREE.NoBlending} />
+        </mesh>
+      ))}
     </>
   );
 }
-

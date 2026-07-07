@@ -205,22 +205,46 @@ const signBoardVert = `
 const signBoardFrag = `
   uniform vec3 uColor;
   uniform float uSeed;
+  uniform float uType;
   varying vec2 vUv;
   float hash(vec2 p) { return fract(sin(dot(p, vec2(12.9898, 78.233))) * 43758.5453); }
   void main() {
+    float borderW = 0.08;
+    float borderH = 0.02;
+    bool isBorder = vUv.x < borderW || vUv.x > 1.0 - borderW || vUv.y < borderH || vUv.y > 1.0 - borderH;
+    
+    if (uType > 0.5) { // Hollow Neon Border Style
+      if (isBorder) {
+        gl_FragColor = vec4(uColor, 1.0); // Bright neon border
+        return;
+      }
+      
+      // Inside: draw some neon text letters
+      float cells = floor(10.0 + hash(vec2(uSeed)) * 5.0);
+      vec2 cell = floor(vec2(0.0, vUv.y * cells));
+      vec2 cellUv = fract(vec2(vUv.x, vUv.y * cells));
+      float h = hash(cell + uSeed);
+      
+      // Draw neon text block in center
+      if (h > 0.3 && cellUv.x > 0.3 && cellUv.x < 0.7 && cellUv.y > 0.1 && cellUv.y < 0.9) {
+         gl_FragColor = vec4(uColor, 0.9);
+      } else {
+         gl_FragColor = vec4(0.0, 0.0, 0.0, 0.9); // solid dark background inside the frame
+      }
+      return;
+    }
+    
+    // Original Solid Style
     float cells = floor(10.0 + hash(vec2(uSeed)) * 10.0);
     vec2 cell = floor(vec2(0.0, vUv.y * cells));
     vec2 cellUv = fract(vec2(vUv.x, vUv.y * cells));
     
-    // borders
-    if (vUv.x < 0.1 || vUv.x > 0.9 || vUv.y < 0.02 || vUv.y > 0.98) {
+    if (isBorder) {
       gl_FragColor = vec4(uColor * 0.4, 1.0);
       return;
     }
-    
     float h = hash(cell + uSeed);
     if (h < 0.25) { gl_FragColor = vec4(uColor, 1.0); return; } // empty block
-    
     float dist = length(cellUv - vec2(0.5));
     bool isSym = h < 0.5 ? (dist < 0.25) : h < 0.8 ? (abs(cellUv.x-0.5)<0.2 && abs(cellUv.y-0.5)<0.2) : (abs(cellUv.x+cellUv.y-1.0)<0.2);
     
@@ -248,7 +272,11 @@ function SignBoard({ w, d, h, side, heightFactor, yOffset, color, seed }: {
   const geom = useMemo(() => new THREE.BoxGeometry(sbW, sbH, sbD), [sbW, sbH, sbD]);
   const uniforms = useMemo(() => {
     const c = new THREE.Color(color);
-    return { uColor: { value: new THREE.Vector3(c.r, c.g, c.b) }, uSeed: { value: seed } };
+    return { 
+      uColor: { value: new THREE.Vector3(c.r, c.g, c.b) }, 
+      uSeed: { value: seed },
+      uType: { value: seed % 2 } // Alternates between solid and hollow border
+    };
   }, [color, seed]);
   
   return (
@@ -299,6 +327,82 @@ function LayeredCrown({ baseW, baseD, body, color, layers, startY }: {
   );
 }
 
+// ── Tech Spire (Matches Image 1) ──────────────────────────────────────────────
+function TechSpireTier({ w, h, y, body, color }: { w: number, h: number, y: number, body: string, color: string }) {
+  const geom = useMemo(() => new THREE.CylinderGeometry(w*0.7, w, h, 8), [w, h]);
+  const edges = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
+  return (
+    <group position={[0, y, 0]}>
+      <mesh geometry={geom}><meshBasicMaterial color={body} /></mesh>
+      <lineSegments geometry={edges}>
+        <lineBasicMaterial color={color} toneMapped={false} transparent opacity={0.9} />
+      </lineSegments>
+      {/* Glowing horizontal band */}
+      <mesh position={[0, h/2 - 0.02, 0]}>
+        <cylinderGeometry args={[w*0.7 + 0.02, w*0.7 + 0.02, 0.04, 8]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+    </group>
+  );
+}
+
+function TechSpire({ baseW, baseD, body, color, startY }: {
+  baseW: number; baseD: number; body: string; color: string; startY: number;
+}) {
+  const h = Math.max(baseW, baseD);
+  return (
+    <group position={[0, startY, 0]}>
+      <TechSpireTier w={h * 0.4} h={1.0} y={0.5} body={body} color={color} />
+      <TechSpireTier w={h * 0.28} h={1.0} y={1.5} body={body} color={color} />
+      <TechSpireTier w={h * 0.15} h={1.0} y={2.5} body={body} color={color} />
+      {/* Antenna */}
+      <mesh position={[0, 5.0, 0]}>
+        <cylinderGeometry args={[0.03, 0.05, 4.0, 8]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+      {/* Antenna Glow */}
+      <mesh position={[0, 5.0, 0]}>
+        <cylinderGeometry args={[0.1, 0.15, 4.0, 8]} />
+        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
+// ── Sloped Peak (Matches Image 3) ─────────────────────────────────────────────
+function SlopedPeak({ baseW, baseD, body, color, startY }: {
+  baseW: number; baseD: number; body: string; color: string; startY: number;
+}) {
+  const h = 4.0;
+  // radialSegments=4, rotated by 45 degrees to align with square base
+  const geom = useMemo(() => {
+    const g = new THREE.ConeGeometry(Math.max(baseW, baseD) * 0.7, h, 4);
+    g.rotateY(Math.PI / 4);
+    return g;
+  }, [baseW, baseD, h]);
+  const edges = useMemo(() => new THREE.EdgesGeometry(geom), [geom]);
+  
+  return (
+    <group position={[0, startY, 0]}>
+      <mesh position={[0, h/2, 0]} geometry={geom}>
+        <meshBasicMaterial color={body} />
+      </mesh>
+      <lineSegments position={[0, h/2, 0]} geometry={edges}>
+        <lineBasicMaterial color={color} toneMapped={false} transparent opacity={1.0} />
+      </lineSegments>
+      {/* Thick vertical laser shooting up from the peak */}
+      <mesh position={[0, h + 2.0, 0]}>
+        <cylinderGeometry args={[0.04, 0.04, 4.0]} />
+        <meshBasicMaterial color={color} toneMapped={false} />
+      </mesh>
+      <mesh position={[0, h + 2.0, 0]}>
+        <cylinderGeometry args={[0.15, 0.15, 4.0]} />
+        <meshBasicMaterial color={color} toneMapped={false} transparent opacity={0.3} blending={THREE.AdditiveBlending} depthWrite={false} />
+      </mesh>
+    </group>
+  );
+}
+
 // ── Main building ─────────────────────────────────────────────────────────────
 function BuildingComponent({ data, onClick }: BuildingProps) {
   const [hovered, setHovered] = useState(false);
@@ -310,15 +414,16 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
     const archetype  = Math.floor(r1 * 5);
     const hasAntenna = archetype === 4 || (data.height > 5 && r2 > 0.28);
     const antennaH   = 2.0 + r3 * 3.5;
-    // Crown: tall buildings (height > 7) get 3-5 layered steps instead of a plain setback
+    // Crown: tall buildings (height > 7) get a crown
     const hasCrown   = data.height > 7 && (archetype === 0 || archetype === 3 || archetype === 1);
+    const crownType  = Math.floor(r5 * 3); // 0 = Layered, 1 = TechSpire, 2 = SlopedPeak
     const crownLayers = hasCrown ? (3 + Math.floor(r4 * 3)) : 0; // 3-5 layers
     const hasSetback = !hasCrown && (archetype === 1 || (archetype === 0 && r4 > 0.6));
     const setbackR   = 0.52 + r2 * 0.18;
     const narrowR    = 0.54 + r3 * 0.22;
     const bandCount  = archetype === 0 ? Math.floor(4 + r4 * 6)
                      : archetype === 3 ? Math.floor(2 + r5 * 4) : 0;
-    const vCount     = archetype === 2 ? (2 + Math.floor(r4 * 3)) : 0;
+    const vCount     = (archetype === 2 || archetype === 0) ? 1 : 0;
     
     // Sign boards
     const signBoards = [];
@@ -336,7 +441,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
        }
     }
     
-    return { archetype, hasAntenna, antennaH, hasCrown, crownLayers, hasSetback, setbackR, narrowR, bandCount, vCount, signBoards };
+    return { archetype, hasAntenna, antennaH, hasCrown, crownType, crownLayers, hasSetback, setbackR, narrowR, bandCount, vCount, signBoards };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id]);
 
@@ -385,14 +490,8 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
   const edgeColor   = hovered ? "#ffffff" : data.emissiveColor;
   const edgeOpacity = hovered ? 1.0 : 0.80;
 
-  const stripPalette: Record<number, string> = { 
-    0: "#00ffff", 
-    1: "#ff00ff", 
-    2: ["#ff2288", "#00e5ff", "#aa00ff"][seedVal % 3], // pink, cyan, or purple
-    3: "#ffff00", 
-    4: "#cc00ff" 
-  };
-  const stripColor = hovered ? "#ffffff" : (stripPalette[style.archetype] ?? data.emissiveColor);
+  const stripPalette = ["#00ffff", "#ff00ff", "#ffff00", "#0088ff", "#ff8800"];
+  const stripColor = hovered ? "#ffffff" : stripPalette[seedVal % stripPalette.length];
 
   const bands = useMemo(() => {
     if (style.bandCount === 0) return [];
@@ -418,9 +517,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
         <mesh geometry={baseGeom} frustumCulled>
           <shaderMaterial vertexShader={sparseWinVert} fragmentShader={sparseWinFrag} uniforms={baseUniforms} toneMapped={false} />
         </mesh>
-        <lineSegments geometry={baseEdges} frustumCulled>
-          <lineBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={edgeOpacity} />
-        </lineSegments>
+        {/* Wireframe edges removed for cleaner single-line look */}
         {bands.map((y, i) => (
           <NeonBand key={i} w={data.width + 0.05} d={data.depth + 0.05} y={y} color={stripColor}
             opacity={style.archetype === 3 ? 0.95 : 0.78} />
@@ -434,7 +531,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
       </group>
 
       {/* ── Layered crown (replaces plain setback for tall towers) ── */}
-      {style.hasCrown && (
+      {style.hasCrown && style.crownType === 0 && (
         <LayeredCrown
           baseW={data.width}
           baseD={data.depth}
@@ -444,16 +541,32 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
           startY={baseH}
         />
       )}
+      {style.hasCrown && style.crownType === 1 && (
+        <TechSpire
+          baseW={data.width}
+          baseD={data.depth}
+          body={bodyHex}
+          color={data.emissiveColor}
+          startY={baseH}
+        />
+      )}
+      {style.hasCrown && style.crownType === 2 && (
+        <SlopedPeak
+          baseW={data.width}
+          baseD={data.depth}
+          body={bodyHex}
+          color={data.emissiveColor}
+          startY={baseH}
+        />
+      )}
 
       {/* ── Plain stepped setback for shorter buildings ── */}
-      {style.hasSetback && topGeom && topEdges && (
+      {style.hasSetback && topGeom && (
         <group position={[0, baseH + topH / 2, 0]}>
           <mesh geometry={topGeom} frustumCulled>
             <shaderMaterial vertexShader={sparseWinVert} fragmentShader={sparseWinFrag} uniforms={topUniforms} toneMapped={false} />
           </mesh>
-          <lineSegments geometry={topEdges} frustumCulled>
-            <lineBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={edgeOpacity} />
-          </lineSegments>
+          {/* Wireframe edges removed */}
           <NeonBand w={topW + 0.05} d={topD + 0.05} y={-topH / 2} color={stripColor} opacity={0.95} />
           <NeonBand w={topW + 0.05} d={topD + 0.05} y={ topH / 2} color={stripColor} opacity={0.95} />
         </group>

@@ -198,9 +198,9 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
   const centerZ = (maxZ + minZ) / 2;
 
   // 1. GENERATE ROADS FIRST
-  // Highways - Dark grey asphalt
-  roads.push({ id: `highway-h`, x: centerX, z: centerZ, width: cityWidth, length: 3.5, type: "highway", color: "#2a2a3a" });
-  roads.push({ id: `highway-v`, x: centerX, z: centerZ, width: 3.5, length: cityDepth, type: "highway", color: "#2a2a3a" });
+  // Central Main Roads (formerly highways)
+  roads.push({ id: `center-main-h`, x: centerX, z: centerZ, width: cityWidth, length: 2.5, type: "main", color: "#1e1e2e" });
+  roads.push({ id: `center-main-v`, x: centerX, z: centerZ, width: 2.5, length: cityDepth, type: "main", color: "#1e1e2e" });
 
   const xGaps = new Set<number>();
   const zGaps = new Set<number>();
