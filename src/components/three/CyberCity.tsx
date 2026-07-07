@@ -23,28 +23,22 @@ function SunsetGlow() {
   const glowFragmentShader = `
     varying vec2 vUv;
     void main() {
-      // vUv.x goes from 0 to 1, vUv.y goes from 0 to 1
-      // We want the glow centered horizontally (x=0.5) and starting from the bottom (y=0.0)
-      
-      // Calculate distance from bottom-center
-      vec2 center = vec2(0.5, 0.0);
-      
-      // We scale X so the glow is wider than it is tall (elliptical)
+      // Elliptical glow centered at the bottom horizon
       vec2 scaledUv = vec2(vUv.x, vUv.y * 1.5);
       vec2 scaledCenter = vec2(0.5, 0.0);
-      
       float d = distance(scaledUv, scaledCenter);
+      float alpha = smoothstep(0.85, 0.0, d);
+
+      // Deep violet → hot-pink gradient matching the reference images
+      vec3 colorBottom = vec3(1.0, 0.05, 0.55); // hot pink / magenta
+      vec3 colorMid    = vec3(0.65, 0.0,  0.9);  // violet-purple
+      vec3 colorTop    = vec3(0.2,  0.0,  0.6);  // deep indigo
       
-      // Smooth fade out
-      float alpha = smoothstep(0.8, 0.0, d);
+      float t = clamp(vUv.y * 1.8, 0.0, 1.0);
+      vec3 color = mix(colorBottom, colorMid, smoothstep(0.0, 0.4, t));
+      color = mix(color, colorTop, smoothstep(0.4, 1.0, t));
       
-      // Sunset colors
-      vec3 colorBottom = vec3(1.0, 0.0, 0.5); // Neon pink
-      vec3 colorTop = vec3(0.5, 0.0, 0.8);    // Purple edge
-      
-      vec3 color = mix(colorTop, colorBottom, alpha);
-      
-      gl_FragColor = vec4(color, alpha * 0.7); // 0.7 max opacity
+      gl_FragColor = vec4(color, alpha * 0.85);
     }
   `;
 
@@ -88,22 +82,43 @@ function Starfield() {
     return pos;
   }, []);
 
+  // Cross/sparkle star positions (4-pointed stars like in the reference images)
+  const sparklePositions = useMemo(() => {
+    const pos = [];
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      pos.push({
+        x: (Math.random() - 0.5) * 350,
+        y: 60 + Math.random() * 150,
+        z: (Math.random() - 0.5) * 350,
+      });
+    }
+    return pos;
+  }, []);
+
   return (
     <group position={[0, 0, -20]}>
-      {/* Background stars */}
+      {/* Background stars – cool blue-violet tint */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions1, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#aaaaff" size={0.15} sizeAttenuation={true} transparent opacity={0.6} />
+        <pointsMaterial color="#ccaaff" size={0.12} sizeAttenuation={true} transparent opacity={0.55} />
       </points>
-      {/* Foreground stars */}
+      {/* Foreground stars – bright white with slight warmth */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions2, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#ffffff" size={0.35} sizeAttenuation={true} transparent opacity={0.9} />
+        <pointsMaterial color="#eeddff" size={0.3} sizeAttenuation={true} transparent opacity={0.95} />
       </points>
+      {/* Sparkle cross-stars (bright accent points) */}
+      {sparklePositions.map((s, i) => (
+        <mesh key={i} position={[s.x, s.y, s.z]}>
+          <sphereGeometry args={[0.4, 4, 4]} />
+          <meshBasicMaterial color="#ffffff" toneMapped={false} />
+        </mesh>
+      ))}
     </group>
   );
 }
@@ -146,7 +161,7 @@ function SynthwaveSun({ loading = false }: { loading?: boolean }) {
       // The sun is placed at y=8, radius=30. Ground is at y=0.
       // Normally the bottom 22 units of the sun are hidden underground (vUv.y < 0.366)
       // When zooming (uZoom=1), we transition the cutoff to 0.0 so the whole circle becomes visible!
-      float cutoff = mix(0.366, 0.0, uZoom);
+      float cutoff = mix(0.30, 0.0, uZoom);
       float range = 1.0 - cutoff;
       float visY = clamp((vUv.y - cutoff) / range, 0.0, 1.0);
 
@@ -181,9 +196,13 @@ function SynthwaveSun({ loading = false }: { loading?: boolean }) {
     varying vec2 vUv;
     void main() {
       float d = distance(vUv, vec2(0.5));
-      // Soft radial blur fading out from center
-      float alpha = smoothstep(0.5, 0.2, d) * 0.4;
-      gl_FragColor = vec4(1.0, 0.0, 0.4, alpha);
+      // Soft radial purple-magenta corona
+      float alpha = smoothstep(0.5, 0.15, d) * 0.55;
+      // Violet-pink corona matching reference images
+      vec3 innerColor = vec3(1.0, 0.5, 0.9); // bright pink-white
+      vec3 outerColor = vec3(0.5, 0.0, 0.9); // deep violet
+      vec3 color = mix(outerColor, innerColor, smoothstep(0.5, 0.1, d));
+      gl_FragColor = vec4(color, alpha);
     }
   `;
 
@@ -193,13 +212,11 @@ function SynthwaveSun({ loading = false }: { loading?: boolean }) {
     void main() {
       // Fade horizontally from center
       float xFade = smoothstep(0.0, 0.5, vUv.x) * smoothstep(1.0, 0.5, vUv.x);
-      
-      // Fade vertically. vUv.y=1 is the far horizon, vUv.y=0 is near the camera.
+      // Fade vertically from horizon down
       float yFade = pow(vUv.y, 1.5);
-      
-      // Fade out reflection entirely during the zoom transition
       float alpha = xFade * yFade * (1.0 - uZoom);
-      gl_FragColor = vec4(1.0, 0.0, 0.8, alpha); // Hot pink reflection
+      // Violet-magenta road reflection
+      gl_FragColor = vec4(0.8, 0.0, 1.0, alpha);
     }
   `;
 
@@ -268,14 +285,14 @@ export default function CyberCity({ gridSize = 100, buildings = [], roads = [], 
 
   return (
     <>
-      {/* Restored the dark background so everything below the grid is black space */}
-      <color attach="background" args={["#040810"]} />
+      {/* Deep indigo-violet background matching the synthwave reference images */}
+      <color attach="background" args={["#06001a"]} />
       
       {/* Localized sunset glow strictly behind the mountains/sun */}
       <SunsetGlow />
       
-      {/* Fog matched to the dark background so the ground fades into darkness! */}
-      <fog attach="fog" args={["#040810", gridSize * 0.5, gridSize * 1.5]} />
+      {/* Fog matched to the deep indigo background */}
+      <fog attach="fog" args={["#06001a", gridSize * 0.5, gridSize * 1.5]} />
 
       <OrbitControls
         enablePan={!isHomepage}

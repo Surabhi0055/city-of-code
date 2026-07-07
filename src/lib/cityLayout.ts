@@ -27,14 +27,16 @@ export interface RoadData {
 }
 
 const DISTRICT_COLORS = [
-  { base: "#000a1f", emissive: "#0066ff" },  // blue
-  { base: "#1a0011", emissive: "#ff0088" },  // pink
-  { base: "#110008", emissive: "#ff0055" },  // pink (was red)
-  { base: "#001115", emissive: "#008b8b" },  // dark cyan
-  { base: "#000a1f", emissive: "#00aaff" },  // light blue
-  { base: "#11000b", emissive: "#ff33aa" },  // hot pink
-  { base: "#1a0011", emissive: "#ff33aa" },  // light pink (was light red)
-  { base: "#001a1a", emissive: "#005555" },  // dark cyan/teal
+  { base: "#050510", emissive: "#ff007f" },  // neon pink  — PRIMARY (largest folder)
+  { base: "#050510", emissive: "#0088ff" },  // neon blue  — 2nd largest
+  { base: "#050510", emissive: "#ff00cc" },  // magenta    — 3rd
+  { base: "#050510", emissive: "#00aaff" },  // sky blue   — 4th
+  { base: "#050510", emissive: "#ff44cc" },  // pink       — 5th
+  { base: "#050510", emissive: "#3366ff" },  // deep blue  — 6th
+  { base: "#050510", emissive: "#cc00ff" },  // purple     — 7th
+  { base: "#050510", emissive: "#00e5ff" },  // cyan       — 8th
+  { base: "#050510", emissive: "#ff6600" },  // orange     — 9th
+  { base: "#050510", emissive: "#ff2244" },  // red        — 10th
 ];
 
 function getBuildingType(size: number, fileName: string): BuildingData["buildingType"] {
@@ -55,45 +57,55 @@ function getFileHeight(size: number, type: BuildingData["buildingType"], seed: n
   let baseHeight = Math.max(2, Math.log2(size / 100));
   let multiplier = 1.0;
   switch (type) {
-    case "tower": multiplier = 3.5; break; // Exaggerated skyline
-    case "spire": multiplier = 3.0; break;
-    case "slab": multiplier = 0.25; break; // Very low
-    case "block": multiplier = 0.3; break;
-    case "residential": multiplier = 1.0; break;
+    case "tower": multiplier = 2.0; break;    // Tall but not absurd
+    case "spire": multiplier = 2.5; break;    // Tallest — the landmark buildings
+    case "slab": multiplier = 0.6; break;     // Low-rise commercial blocks
+    case "block": multiplier = 0.8; break;    // Medium office blocks
+    case "residential": multiplier = 1.2; break;
   }
   
   let height = baseHeight * multiplier;
-  if (type === "block") height = Math.min(height, 3);
+  if (type === "block") height = Math.min(height, 5);
   
   const variance = 0.85 + seededRandom(seed) * 0.30;
   return height * variance;
 }
 
-function getBuildingDimensions(type: BuildingData["buildingType"], seed: number) {
+/**
+ * Building footprint scales with height so taller buildings occupy more
+ * land — matching real-world skyscraper massing and the reference images.
+ * footprintScale caps at 2.0 to prevent giant footprints on extreme files.
+ */
+function getBuildingDimensions(type: BuildingData["buildingType"], seed: number, height: number) {
   const rand = seededRandom(seed);
+  // Gentle sqrt curve: taller → wider, but diminishing returns
+  const footprintScale = Math.min(2.0, 0.85 + Math.sqrt(height) * 0.22);
   switch (type) {
-    case "tower": 
-      return { 
-        width: 1.0 + rand * 0.8,    // 1.0–1.8
-        depth: 1.0 + rand * 0.8     
+    case "tower":
+      return {
+        width: (1.4 + rand * 0.9) * footprintScale,
+        depth: (1.4 + rand * 0.9) * footprintScale,
       };
-    case "block": 
-      return { 
-        width: 1.8 + rand * 0.4,    // 1.8–2.2 (Maxes out right before 2.4 spacing)
-        depth: 1.8 + rand * 0.4     
+    case "block":
+      return {
+        width: (1.8 + rand * 0.5) * footprintScale,
+        depth: (1.8 + rand * 0.5) * footprintScale,
       };
-    case "slab":  
-      return { 
-        width: 2.0 + rand * 0.3,    // 2.0–2.3 (Maxes out right before 2.4 spacing)
-        depth: 1.2 + rand * 0.5     
+    case "slab":
+      return {
+        width: (2.0 + rand * 0.4) * footprintScale,
+        depth: (1.4 + rand * 0.6) * footprintScale,
       };
-    case "spire": 
-      return { 
-        width: 0.8 + rand * 0.4,    // 0.8–1.2
-        depth: 0.8 + rand * 0.4
+    case "spire":
+      return {
+        width: (1.0 + rand * 0.5) * footprintScale,
+        depth: (1.0 + rand * 0.5) * footprintScale,
       };
-    default: 
-      return { width: 1.5, depth: 1.5 };
+    default:
+      return {
+        width: 1.7 * footprintScale,
+        depth: 1.7 * footprintScale,
+      };
   }
 }
 
@@ -107,7 +119,7 @@ export interface DistrictData {
 }
 
 export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[]; roads: RoadData[]; districts: DistrictData[] } {
-  const cappedFiles = files.slice(0, 150);
+  const cappedFiles = files.slice(0, 100);
   const buildings: BuildingData[] = [];
   const roads: RoadData[] = [];
   const districtsData: DistrictData[] = [];
@@ -130,15 +142,16 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
     const cols = Math.min(BUILDINGS_PER_ROW, dfiles.length);
     const rows = Math.ceil(dfiles.length / cols);
     
-    const BUILDING_SPACING = 2.4;
+    // Increased from 2.4 → 6.0 so larger footprints never touch each other
+    const BUILDING_SPACING = 6.0;
     const BLOCK_SIZE = BUILDING_SPACING;
     const ring = i < 2 ? 0 : (i < 6 ? 1 : 2);
     
     const w = cols * BLOCK_SIZE;
     const d = rows * BLOCK_SIZE;
     
-    // Greedy radial packer for tight gaps
-    const DISTRICT_GAP = 2.5; // Perfectly fits the 2.5 wide main roads to prevent edge buildings from sitting on asphalt
+    // Greedy radial packer — gap increased to 5.0 to fit wider roads between districts
+    const DISTRICT_GAP = 5.0;
     let found = false;
     let rad = 0;
     let angle = 0;
@@ -167,7 +180,7 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
     }
     
     districtPositions.push({ 
-      name, x, z, w, d, ring, colorIndex: i % 8, dfiles, cols, rows 
+      name, x, z, w, d, ring, colorIndex: i % 10, dfiles, cols, rows 
     });
   });
 
@@ -255,9 +268,9 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
   });
 
   // 3. PLACE BUILDINGS & AVOID COLLISIONS
-  const JITTER = 0.2; 
+  const JITTER = 0.3; 
   districtPositions.forEach((pos, districtIndex) => {
-    const BUILDING_SPACING = 2.4;
+    const BUILDING_SPACING = 6.0;
     const BLOCK_SIZE = BUILDING_SPACING;
     const halfW = pos.w / 2;
     const halfD = pos.d / 2;
@@ -272,7 +285,8 @@ export function buildCityLayout(files: GitHubFile[]): { buildings: BuildingData[
       
       const seed = i + districtIndex * 100;
       const height = getFileHeight(file.size, type, seed);
-      const { width: bw, depth: bd } = getBuildingDimensions(type, seed);
+      // Pass height so footprint scales with building size
+      const { width: bw, depth: bd } = getBuildingDimensions(type, seed, height);
 
       const jx = (seededRandom(seed) - 0.5) * JITTER;
       const jz = (seededRandom(seed + 1) - 0.5) * JITTER;

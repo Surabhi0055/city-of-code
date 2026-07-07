@@ -2,6 +2,7 @@
 
 import { useMemo } from "react";
 import * as THREE from "three";
+import { MeshReflectorMaterial } from "@react-three/drei";
 import { RoadData, DistrictData } from "@/lib/cityLayout";
 
 interface CityGridProps {
@@ -90,29 +91,44 @@ const CircuitGridShader = {
       float finalAlpha = max(majorGrid * 0.4, minorGrid * 1.0) * camFade * centerFade;
       if (finalAlpha < 0.01) discard;
 
-      // Global Cyan-to-Magenta Gradient across the city
-      vec3 colorCyan = vec3(0.0, 1.0, 1.0);
-      vec3 colorMagenta = vec3(1.0, 0.0, 1.0);
-      float t = clamp((vWorldPos.x + vWorldPos.z + 100.0) / 200.0, 0.0, 1.0);
-      vec3 baseColor = mix(colorCyan, colorMagenta, t);
+      // Global Cyan grid
+      vec3 baseColor = vec3(0.0, 0.8, 1.0); // Cyan
 
-      gl_FragColor = vec4(baseColor * 1.2, finalAlpha);
+      gl_FragColor = vec4(baseColor * 1.5, finalAlpha);
     }
   `
 };
+
+const roadStencilMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
+roadStencilMat.stencilWrite = true;
+roadStencilMat.stencilRef = 1;
+roadStencilMat.stencilFunc = THREE.AlwaysStencilFunc;
+roadStencilMat.stencilZPass = THREE.ReplaceStencilOp;
 
 export default function CityGrid({ gridSize, roads = [], districts = [] }: CityGridProps) {
   const planeGeom = useMemo(() => new THREE.PlaneGeometry(1, 1), []);
 
   return (
     <>
-      {/* Ground plane background */}
+      {/* Ground plane — wet road reflective surface */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.06, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
-        <meshStandardMaterial color="#020208" roughness={0.4} metalness={0.6} />
+        <MeshReflectorMaterial
+          blur={[100, 100]}
+          resolution={1024}
+          mixBlur={0.2}
+          mixStrength={8.0}
+          roughness={0.1}
+          depthScale={1.2}
+          minDepthThreshold={0.4}
+          maxDepthThreshold={1.4}
+          color="#020208"
+          metalness={0.9}
+          mirror={1}
+        />
       </mesh>
 
-      {/* The massive global circuit grid covering all the land */}
+      {/* The global circuit grid */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
         <shaderMaterial 
@@ -120,69 +136,116 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
           fragmentShader={CircuitGridShader.fragmentShader}
           transparent={true}
           depthWrite={false}
+          stencilWrite={true}
+          stencilRef={0}
+          stencilFunc={THREE.EqualStencilFunc}
         />
       </mesh>
 
-      {/* District Ground Plates */}
+      {/* District Ground Plates — subtle color tint */}
       {districts.map((d, i) => (
         <mesh key={`district-${i}`} position={[d.x, -0.02, d.z]} rotation={[-Math.PI / 2, 0, 0]} frustumCulled={true}>
           <planeGeometry args={[d.w, d.d]} />
-          <meshStandardMaterial color={d.color} transparent opacity={0.06} emissive={d.color} emissiveIntensity={0.03} depthWrite={false} />
+          <meshBasicMaterial color={d.color} transparent opacity={0.04} depthWrite={false} />
         </mesh>
       ))}
 
+      {/* Neon Roads */}
       {roads.map((road, i) => {
         const isHighway = road.type === "highway";
         const isMain = road.type === "main";
         const isAlley = road.type === "alley";
-        
-        const cyanY = isHighway ? 0.021 : isMain ? 0.022 : 0;
-        const asphaltY = isHighway ? 0.031 : isMain ? 0.032 : 0.01;
         const isHoriz = road.width > road.length;
         
-        const dashes = [];
-        if (isHighway || isMain) {
-          const dashLength = 2;
-          const dashGap = 2;
-          const totalDist = isHoriz ? road.width : road.length;
-          const numDashes = Math.floor(totalDist / (dashLength + dashGap));
-          const start = -totalDist / 2;
-          for (let j = 0; j < numDashes; j++) {
-            const centerPos = start + j * (dashLength + dashGap) + dashLength / 2;
-            dashes.push(centerPos);
-          }
-        }
+        const roadY = isHighway ? 0.025 : isMain ? 0.02 : 0.015;
+
+        // Road surface — very dark, slightly reflective
+        const surfaceW = road.width;
+        const surfaceL = road.length;
+
+        // Neon lane line dimensions
+        const lineThickness = isHighway ? 0.12 : isMain ? 0.08 : 0.05;
+        const lineLength = isHoriz ? surfaceW : surfaceL;
+        
+        // Edge lines offset from center
+        const edgeOffset = isHoriz 
+          ? (surfaceL / 2 - 0.15)
+          : (surfaceW / 2 - 0.15);
 
         return (
           <group key={`${road.id}-${i}`} position={[road.x, 0, road.z]}>
-            {/* Cyan Border Base Layer - Slightly wider than asphalt. Perfectly occluded at intersections! */}
-            {!isAlley && (
-              <mesh position={[0, cyanY, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeom} scale={[isHoriz ? road.width : road.width + 0.1, isHoriz ? road.length + 0.1 : road.length, 1]} frustumCulled={true}>
-                <meshBasicMaterial color="#00ffff" transparent opacity={0.6} />
-              </mesh>
-            )}
+            {/* Stencil cutout so the grid isn't drawn on the road, leaving pure black reflection */}
+            <mesh 
+              position={[0, roadY, 0]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              geometry={planeGeom} 
+              scale={[surfaceW, surfaceL, 1]} 
+              frustumCulled={true}
+              material={roadStencilMat}
+            />
 
-            {/* Dark asphalt road body */}
-            <mesh position={[0, asphaltY, 0]} rotation={[-Math.PI / 2, 0, 0]} geometry={planeGeom} scale={[road.width, road.length, 1]} frustumCulled={true}>
-              <meshStandardMaterial color={road.color} emissive="#0a0a1a" roughness={0.3} metalness={0.5} />
+            {/* Neon center line — NEON CYAN (priority color) */}
+            <mesh 
+              position={[0, roadY + 0.005, 0]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              geometry={planeGeom} 
+              scale={isHoriz ? [lineLength, lineThickness, 1] : [lineThickness, lineLength, 1]} 
+              frustumCulled={true}
+            >
+              <meshBasicMaterial color="#00ffff" toneMapped={false} transparent opacity={0.95} />
             </mesh>
-            
-            {/* Dashed center lines */}
-            {dashes.map((d, j) => (
-              <mesh 
-                key={j} 
-                position={[isHoriz ? d : 0, asphaltY + 0.01, isHoriz ? 0 : d]} 
-                rotation={[-Math.PI / 2, 0, 0]}
-                geometry={planeGeom} 
-                scale={[isHoriz ? 2 : 0.15, isHoriz ? 0.15 : 2, 1]}
-                frustumCulled={true}
-              >
-                <meshBasicMaterial color="#ffffff" transparent opacity={isHighway ? 0.6 : 0.5} />
-              </mesh>
-            ))}
+
+            {/* Center line glow — soft cyan halo */}
+            <mesh 
+              position={[0, roadY + 0.004, 0]} 
+              rotation={[-Math.PI / 2, 0, 0]} 
+              geometry={planeGeom} 
+              scale={isHoriz ? [lineLength, lineThickness * 7, 1] : [lineThickness * 7, lineLength, 1]} 
+              frustumCulled={true}
+            >
+              <meshBasicMaterial color="#00ffff" toneMapped={false} transparent opacity={0.07} depthWrite={false} blending={THREE.AdditiveBlending} />
+            </mesh>
+
+            {!isAlley && (
+              <>
+                {/* Edge line 1 — NEON BLUE */}
+                <mesh 
+                  position={isHoriz ? [0, roadY + 0.005, -edgeOffset] : [-edgeOffset, roadY + 0.005, 0]} 
+                  rotation={[-Math.PI / 2, 0, 0]} 
+                  geometry={planeGeom} 
+                  scale={isHoriz ? [lineLength, lineThickness * 0.7, 1] : [lineThickness * 0.7, lineLength, 1]} 
+                  frustumCulled={true}
+                >
+                  <meshBasicMaterial color="#0066ff" toneMapped={false} transparent opacity={0.9} />
+                </mesh>
+
+                {/* Edge line 2 — NEON BLUE */}
+                <mesh 
+                  position={isHoriz ? [0, roadY + 0.005, edgeOffset] : [edgeOffset, roadY + 0.005, 0]} 
+                  rotation={[-Math.PI / 2, 0, 0]} 
+                  geometry={planeGeom} 
+                  scale={isHoriz ? [lineLength, lineThickness * 0.7, 1] : [lineThickness * 0.7, lineLength, 1]} 
+                  frustumCulled={true}
+                >
+                  <meshBasicMaterial color="#0066ff" toneMapped={false} transparent opacity={0.9} />
+                </mesh>
+
+                {/* Road surface glow bleed */}
+                <mesh 
+                  position={[0, roadY + 0.003, 0]} 
+                  rotation={[-Math.PI / 2, 0, 0]} 
+                  geometry={planeGeom} 
+                  scale={[surfaceW, surfaceL, 1]} 
+                  frustumCulled={true}
+                >
+                  <meshBasicMaterial color="#002244" toneMapped={false} transparent opacity={0.14} depthWrite={false} blending={THREE.AdditiveBlending} />
+                </mesh>
+              </>
+            )}
           </group>
         );
       })}
     </>
   );
 }
+

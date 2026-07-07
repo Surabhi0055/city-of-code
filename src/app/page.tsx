@@ -122,7 +122,7 @@ export default function Home() {
       position: "relative", 
       display: "flex", 
       overflow: "hidden", 
-      backgroundColor: "#040810",
+      backgroundColor: "#06001a",
     }}>
       <LoadingOverlay loading={loading} />
       
@@ -311,10 +311,10 @@ export default function Home() {
               powerPreference: "high-performance",
             }}
           >
-            <ambientLight intensity={1.5} color="#111a1a" />
-            <pointLight position={[0, 80, 0]}    color="#01949A" intensity={3} distance={400} />
-            <pointLight position={[80, 50, 80]}  color="#E52F20" intensity={2} distance={300} />
-            <pointLight position={[-60, 40, -60]} color="#004346" intensity={1.5} distance={300} />
+            <ambientLight intensity={1.2} color="#1a0033" />
+            <pointLight position={[0,  80, 0]}    color="#aa00ff" intensity={3}   distance={400} />
+            <pointLight position={[80, 50, 80]}   color="#ff00cc" intensity={2}   distance={300} />
+            <pointLight position={[-60,40,-60]}   color="#6600ff" intensity={1.5} distance={300} />
 
             {(() => {
               const displayBuildings = buildings;
@@ -352,11 +352,11 @@ export default function Home() {
               position: "absolute",
               inset: 0,
               pointerEvents: "none",
-              background: "linear-gradient(to right, rgba(255, 0, 136, 0.15) 0%, transparent 20%, transparent 80%, rgba(255, 0, 136, 0.15) 100%)",
+              background: "linear-gradient(to right, rgba(120, 0, 200, 0.18) 0%, transparent 22%, transparent 78%, rgba(120, 0, 200, 0.18) 100%)",
               backdropFilter: "blur(8px)",
               WebkitBackdropFilter: "blur(8px)",
-              maskImage: "linear-gradient(to right, black 0%, transparent 20%, transparent 80%, black 100%)",
-              WebkitMaskImage: "linear-gradient(to right, black 0%, transparent 20%, transparent 80%, black 100%)",
+              maskImage: "linear-gradient(to right, black 0%, transparent 22%, transparent 78%, black 100%)",
+              WebkitMaskImage: "linear-gradient(to right, black 0%, transparent 22%, transparent 78%, black 100%)",
               zIndex: 5
             }} />
           )}
