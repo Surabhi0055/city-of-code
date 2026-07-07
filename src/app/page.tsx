@@ -3,7 +3,8 @@
 import { useState, useCallback } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
-import { motion } from "framer-motion";
+import { motion, AnimatePresence } from "framer-motion";
+import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import InfoPanel from "@/components/three/InfoPanel";
@@ -44,7 +45,12 @@ export default function Home() {
     setExplanation("");
 
     try {
-      const repoData = await fetchRepoData(parsed.owner, parsed.repo);
+      // Guarantee at least 3.5 seconds of loading time for the epic sun transition
+      const [repoData] = await Promise.all([
+        fetchRepoData(parsed.owner, parsed.repo),
+        new Promise(resolve => setTimeout(resolve, 3500))
+      ]);
+      
       const cityData = buildCityLayout(repoData.files);
       setBuildings(cityData.buildings);
       setRoads(cityData.roads);
@@ -118,15 +124,18 @@ export default function Home() {
       overflow: "hidden", 
       backgroundColor: "#040810",
     }}>
+      <LoadingOverlay loading={loading} />
       
       {/* Main Content Area */}
       <div style={{ flex: 1, position: "relative" }}>
         
         {/* Project Info & Input UI (Terminal Style, No Card) */}
-        {!repoInfo && (
-          <motion.div
+        <AnimatePresence>
+          {!repoInfo && !loading && (
+            <motion.div
             initial={{ opacity: 0, y: 30 }}
             animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -30 }}
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
             style={{
               position: "absolute",
@@ -207,7 +216,8 @@ export default function Home() {
               </button>
             </div>
           </motion.div>
-        )}
+          )}
+        </AnimatePresence>
 
         {/* Input UI for when city is loaded */}
         {repoInfo && (
@@ -261,36 +271,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Loading overlay */}
-        {loading && (
-          <div style={{
-            position: "absolute",
-            inset: 0,
-            zIndex: 20,
-            display: "flex",
-            flexDirection: "column",
-            alignItems: "center",
-            justifyContent: "center",
-            background: "rgba(4, 8, 16, 0.9)",
-            backdropFilter: "blur(8px)",
-            color: "#01949A",
-            fontFamily: "monospace",
-            gap: "12px",
-          }}>
-            <div style={{
-              width: "50px",
-              height: "50px",
-              border: "3px solid #004346",
-              borderTop: "3px solid #E52F20",
-              borderRadius: "50%",
-              animation: "spin 1s cubic-bezier(0.5, 0, 0.5, 1) infinite",
-            }} />
-            <p style={{ fontSize: "16px", margin: 0, letterSpacing: "2px" }}>GENERATING CITY...</p>
-            <p style={{ fontSize: "12px", color: "#004346", margin: 0 }}>
-              FETCHING REPO STRUCTURE
-            </p>
-          </div>
-        )}
+
 
         {/* Error message */}
         {error && (
@@ -342,7 +323,7 @@ export default function Home() {
               
               if (!repoInfo) {
                 // On Homepage, just render the ground, sun, and stars. No buildings.
-                return <CyberCity gridSize={180} buildings={[]} roads={[]} districts={[]} isHomepage={true} />;
+                return <CyberCity gridSize={180} buildings={[]} roads={[]} districts={[]} isHomepage={true} loading={loading} />;
               }
 
               let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
@@ -356,7 +337,7 @@ export default function Home() {
               if (gridSize < 180) gridSize = 180; // Ensure camera is not engulfed by fog!
               
               return (
-                <CyberCity gridSize={gridSize} buildings={displayBuildings} roads={displayRoads} districts={displayDistricts} isHomepage={false} />
+                <CyberCity gridSize={gridSize} buildings={displayBuildings} roads={displayRoads} districts={displayDistricts} isHomepage={false} loading={loading} />
               );
             })()}
             <CityBuildings
