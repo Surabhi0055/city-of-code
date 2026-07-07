@@ -3,21 +3,14 @@
 import { useState, useCallback } from "react";
 import * as THREE from "three";
 import { Canvas } from "@react-three/fiber";
+import { motion } from "framer-motion";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import InfoPanel from "@/components/three/InfoPanel";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
+
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
 import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
-
-// Generate dummy data for the background city
-const dummyFiles = Array.from({ length: 150 }).map((_, i) => ({
-  path: `folder${i % 8}/file${i}.ts`,
-  size: 500 + Math.random() * 20000,
-  type: "file" as const,
-  sha: `dummy-sha-${i}`,
-}));
-const dummyCity = buildCityLayout(dummyFiles);
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -131,12 +124,18 @@ export default function Home() {
         
         {/* Project Info & Input UI (Terminal Style, No Card) */}
         {!repoInfo && (
-          <div
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
             style={{
               position: "absolute",
               top: "50%",
               left: "50%",
-              transform: "translate(-50%, -50%)",
+              // Since we are animating 'y', we can't use transform for centering easily without conflicting with motion's transform.
+              // So we use framer-motion's 'x' and 'y' properties to handle the -50% centering.
+              x: "-50%",
+              y: "-50%",
               zIndex: 10,
               width: "90%",
               maxWidth: "800px",
@@ -150,67 +149,64 @@ export default function Home() {
               Enter GitHub Repository URL to Visualize
             </h1>
             
-            <div style={{ display: "flex", alignItems: "center", gap: "16px", marginTop: "24px" }}>
-              <span style={{ color: "#ff0088", fontSize: "1.5rem" }}>&gt;</span>
+            <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} style={{ width: "100%", position: "relative" }}>
+              <span style={{ position: "absolute", left: 0, top: "2px", color: "#ff00aa" }}>{">"}</span>
               <input
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
                 placeholder="[https://github.com/username/repo]"
                 style={{
-                  flex: 1,
-                  padding: "16px 0",
+                  width: "100%",
+                  background: "transparent",
                   border: "none",
                   borderBottom: "2px solid #008b8b",
-                  background: "transparent",
-                  color: "#ff0088",
-                  fontSize: "1.5rem",
-                  fontFamily: "monospace",
-                  outline: "none",
-                }}
-              />
-            </div>
-
-            <div style={{ display: "flex", gap: "16px", marginTop: "32px", fontSize: "1.2rem" }}>
-              <button
-                onClick={handleGenerate}
-                disabled={loading}
-                style={{
-                  padding: "12px 24px",
-                  border: "1px solid #ff0088",
-                  background: "transparent",
-                  color: "#ff0088",
-                  fontFamily: "monospace",
+                  color: "#00aaff",
                   fontSize: "1.2rem",
-                  cursor: loading ? "not-allowed" : "pointer",
-                  transition: "all 0.3s ease",
+                  padding: "4px 4px 4px 24px",
+                  outline: "none",
+                  fontFamily: "monospace",
+                  letterSpacing: "1px",
+                }}
+                autoComplete="off"
+                spellCheck="false"
+                disabled={loading}
+              />
+            </form>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: "20px", alignItems: "center", marginTop: "10px" }}>
+              <button
+                onClick={() => handleGenerate()}
+                disabled={loading || !url}
+                style={{
+                  background: "transparent",
+                  border: "1px solid #ff00aa",
+                  color: "#ff00aa",
+                  padding: "8px 16px",
+                  cursor: (loading || !url) ? "not-allowed" : "pointer",
+                  fontFamily: "monospace",
+                  fontSize: "1rem",
+                  textTransform: "uppercase",
+                  letterSpacing: "2px",
+                  opacity: (loading || !url) ? 0.5 : 1,
+                  transition: "all 0.2s ease",
                 }}
                 onMouseEnter={(e) => {
-                  if (!loading) {
-                    e.currentTarget.style.background = "rgba(255, 0, 136, 0.2)";
-                    e.currentTarget.style.boxShadow = "0 0 15px rgba(255, 0, 136, 0.4)";
+                  if (!loading && url) {
+                    e.currentTarget.style.background = "rgba(255, 0, 170, 0.2)";
+                    e.currentTarget.style.boxShadow = "0 0 10px rgba(255, 0, 170, 0.5)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  if (!loading) {
-                    e.currentTarget.style.background = "transparent";
-                    e.currentTarget.style.boxShadow = "none";
-                  }
+                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                {loading ? "[BUILDING...]" : "[GENERATE]"}
+                {loading ? "[PROCESSING...]" : "[GENERATE]"}
               </button>
-              
-              <div style={{ color: "#008b8b", display: "flex", alignItems: "center" }}>
-                | [Examples: `react`, `linux`, `rust`] | [Help]
-              </div>
             </div>
-            
-            <div style={{ color: "#008b8b", marginTop: "24px", fontSize: "1rem" }}>
-              [SYSTEM: Awaiting input...] [NET: Connected] [LOC: Cybernet]
-            </div>
-          </div>
+          </motion.div>
         )}
 
         {/* Input UI for when city is loaded */}
@@ -327,7 +323,7 @@ export default function Home() {
           transition: "filter 1s ease",
         }}>
           <Canvas
-            camera={{ position: [30, 20, 30], fov: 50 }}
+            camera={{ position: [0, 8, 40], fov: 50 }}
             gl={{
               antialias: true,
               toneMapping: THREE.ACESFilmicToneMapping,
@@ -340,10 +336,15 @@ export default function Home() {
             <pointLight position={[-60, 40, -60]} color="#004346" intensity={1.5} distance={300} />
 
             {(() => {
-              const displayBuildings = buildings.length > 0 ? buildings : dummyCity.buildings;
-              const displayRoads = buildings.length > 0 ? roads : dummyCity.roads;
-              const displayDistricts = buildings.length > 0 ? districts : dummyCity.districts;
+              const displayBuildings = buildings;
+              const displayRoads = roads;
+              const displayDistricts = districts;
               
+              if (!repoInfo) {
+                // On Homepage, just render the ground, sun, and stars. No buildings.
+                return <CyberCity gridSize={180} buildings={[]} roads={[]} districts={[]} isHomepage={true} />;
+              }
+
               let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
               displayBuildings.forEach(b => {
                 if (b.x - b.width / 2 < minX) minX = b.x - b.width / 2;
@@ -355,14 +356,29 @@ export default function Home() {
               if (gridSize < 180) gridSize = 180; // Ensure camera is not engulfed by fog!
               
               return (
-                <CyberCity gridSize={gridSize} buildings={displayBuildings} roads={displayRoads} districts={displayDistricts} isHomepage={!repoInfo} />
+                <CyberCity gridSize={gridSize} buildings={displayBuildings} roads={displayRoads} districts={displayDistricts} isHomepage={false} />
               );
             })()}
             <CityBuildings
-              buildings={buildings.length > 0 ? buildings : dummyCity.buildings}
+              buildings={buildings}
               onBuildingClick={handleSelectBuilding}
             />
           </Canvas>
+          
+          {/* Sunset edge glow and blur on the sides */}
+          {!repoInfo && (
+            <div style={{
+              position: "absolute",
+              inset: 0,
+              pointerEvents: "none",
+              background: "linear-gradient(to right, rgba(255, 0, 136, 0.15) 0%, transparent 20%, transparent 80%, rgba(255, 0, 136, 0.15) 100%)",
+              backdropFilter: "blur(8px)",
+              WebkitBackdropFilter: "blur(8px)",
+              maskImage: "linear-gradient(to right, black 0%, transparent 20%, transparent 80%, black 100%)",
+              WebkitMaskImage: "linear-gradient(to right, black 0%, transparent 20%, transparent 80%, black 100%)",
+              zIndex: 5
+            }} />
+          )}
         </div>
         
         {/* AI Info Panel */}
