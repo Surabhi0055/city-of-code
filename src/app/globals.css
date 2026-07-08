@@ -27,3 +27,99 @@ body {
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+.hover-char {
+  display: inline-block;
+  transition: transform 0.2s ease, filter 0.2s ease, background 0.2s ease, -webkit-text-stroke 0.2s ease;
+}
+
+.subheading-container .hover-char,
+.description-container .hover-char {
+  color: #00ffff;
+  background: none;
+  -webkit-text-fill-color: #00ffff;
+}
+
+h1 .hover-char {
+  background: linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 2.5px #ff8800;
+}
+
+.hover-char:hover {
+  background: #ff0088;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 15px rgba(255, 0, 136, 0.8));
+  transform: translateY(-2px);
+}
+
+h1 .hover-char:hover {
+  -webkit-text-stroke: 2.5px #ff0088;
+  transform: translateY(-4px);
+}
+
+.description-container .hover-char:hover {
+  background: #ffcc00;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  filter: drop-shadow(0 0 15px rgba(255, 204, 0, 0.8));
+  transform: translateY(-2px);
+}
+
+.rainbow-border-wrap {
+  position: relative;
+  width: 100%;
+  border-radius: 12px;
+  background: rgba(0, 0, 0, 0.4);
+}
+
+.border-spinner {
+  position: absolute;
+  inset: 0;
+  border-radius: 12px;
+  padding: 1px;
+  background: rgba(255, 255, 255, 0.15);
+  -webkit-mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask: 
+    linear-gradient(#fff 0 0) content-box, 
+    linear-gradient(#fff 0 0);
+  mask-composite: exclude;
+  pointer-events: none;
+  overflow: hidden;
+  z-index: 0;
+}
+
+.border-spinner::before {
+  content: "";
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 2000px;
+  height: 2000px;
+  margin-top: -1000px;
+  margin-left: -1000px;
+  background: conic-gradient(
+    from 0deg, 
+    transparent 0%, 
+    cyan 20%, 
+    blue 35%, 
+    pink 50%, 
+    transparent 70%
+  );
+  animation: spin 4s linear infinite;
+}
+
+.rainbow-border-wrap.focused .border-spinner::before {
+  animation: spin 1.5s linear infinite;
+  filter: brightness(1.2) drop-shadow(0 0 15px rgba(255,255,255,0.4));
+}
+
+@keyframes spin {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}

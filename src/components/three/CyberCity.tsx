@@ -306,7 +306,7 @@ export default function CyberCity({ gridSize = 100, buildings = [], roads = [], 
         autoRotateSpeed={0.6}
       />
 
-      <CityGrid gridSize={gridSize} roads={roads} districts={districts} />
+      <CityGrid gridSize={gridSize} roads={roads} districts={districts} isHomepage={isHomepage} />
       <LampPosts roads={roads} />
       {districts && districts.length > 0 && <CityLights districts={districts} />}
       <CityClouds gridSize={gridSize} />
@@ -314,7 +314,7 @@ export default function CyberCity({ gridSize = 100, buildings = [], roads = [], 
       
       {/* Layering: Sun sits behind the mountains! */}
       <SynthwaveSun loading={loading} />
-      <RetroMountains />
+      <RetroMountains isHomepage={isHomepage} />
     </>
   );
 }

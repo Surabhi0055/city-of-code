@@ -1,14 +1,16 @@
 "use client";
 
-import { useMemo } from "react";
+import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { MeshReflectorMaterial } from "@react-three/drei";
+import { useFrame } from "@react-three/fiber";
 import { RoadData, DistrictData } from "@/lib/cityLayout";
 
 interface CityGridProps {
   gridSize: number;
   roads?: RoadData[];
   districts?: DistrictData[];
+  isHomepage?: boolean;
 }
 
 const GlobalGradientShader = {
@@ -49,6 +51,9 @@ const CircuitGridShader = {
     }
   `,
   fragmentShader: `
+    uniform vec2 uPointer;
+    uniform float uIsHomepage;
+    uniform float uTime;
     varying vec3 vWorldPos;
     
     float hash(vec2 p) {
@@ -56,11 +61,14 @@ const CircuitGridShader = {
     }
     
     void main() {
+      // Animate the Z coordinate to make the grid move towards the camera
+      float movingZ = vWorldPos.z + (uIsHomepage > 0.5 ? uTime * 15.0 : 0.0);
+      
       // Major grid - larger spacing
       float majorSpacing = 10.0;
       float majorThickness = 0.015;
       float mx = step(abs(fract(vWorldPos.x / majorSpacing + 0.5) - 0.5), majorThickness / (2.0 * majorSpacing));
-      float mz = step(abs(fract(vWorldPos.z / majorSpacing + 0.5) - 0.5), majorThickness / (2.0 * majorSpacing));
+      float mz = step(abs(fract(movingZ / majorSpacing + 0.5) - 0.5), majorThickness / (2.0 * majorSpacing));
       float majorGrid = max(mx, mz);
 
       // Minor traces - less dense, larger rectangles
@@ -68,27 +76,36 @@ const CircuitGridShader = {
       float minorThickness = 0.01;
       
       // X-directed minor lines (placed along Z)
-      float zMinorId = floor(vWorldPos.z / minorSpacing);
+      float zMinorId = floor(movingZ / minorSpacing);
       float xChunk = floor(vWorldPos.x / 4.0); // breaks every 4 units
       float drawXMinor = step(0.6, hash(vec2(zMinorId, xChunk))); 
-      float minorX = drawXMinor * step(abs(fract(vWorldPos.z / minorSpacing + 0.5) - 0.5), minorThickness / (2.0 * minorSpacing));
+      float minorX = drawXMinor * step(abs(fract(movingZ / minorSpacing + 0.5) - 0.5), minorThickness / (2.0 * minorSpacing));
 
       // Z-directed minor lines (placed along X)
       float xMinorId = floor(vWorldPos.x / minorSpacing);
-      float zChunk = floor(vWorldPos.z / 4.0);
+      float zChunk = floor(movingZ / 4.0);
       float drawZMinor = step(0.6, hash(vec2(xMinorId + 100.0, zChunk)));
       float minorZ = drawZMinor * step(abs(fract(vWorldPos.x / minorSpacing + 0.5) - 0.5), minorThickness / (2.0 * minorSpacing));
 
       float minorGrid = max(minorX, minorZ);
 
+      // Fade at far distance
       float distToCam = distance(cameraPosition, vWorldPos);
-      float camFade = smoothstep(90.0, 30.0, distToCam);
+      float camFade = smoothstep(140.0, 40.0, distToCam);
       
       float distToCenter = length(vWorldPos.xz);
       float centerFade = smoothstep(80.0, 40.0, distToCenter);
+      
+      float distToPointer = distance(vWorldPos.xz, uPointer);
+      float pointerFade = smoothstep(15.0, 0.0, distToPointer) * 8.0; // Larger, brighter spotlight
+      
+      // Decrease base fade so grid is a little faded (as requested), but gets extremely bright on hover
+      float baseFade = mix(centerFade, centerFade * 0.15 + pointerFade, uIsHomepage);
 
-      // Combine grids - make the big squares subtle (0.4) and the inside small lines brighter (0.8)
-      float finalAlpha = max(majorGrid * 0.4, minorGrid * 0.8) * camFade * centerFade;
+      // Base lines intensity
+      float lineIntensity = max(majorGrid * 1.5, minorGrid * 2.5);
+      
+      float finalAlpha = lineIntensity * camFade * baseFade;
       if (finalAlpha < 0.01) discard;
 
       // Global multi-colored grid
@@ -97,12 +114,14 @@ const CircuitGridShader = {
       vec3 c3 = vec3(0.14, 0.38, 0.92); // Rich Blue
       vec3 c4 = vec3(0.57, 0.2, 0.91); // Rich Purple
       float nx = sin(vWorldPos.x * 0.05);
-      float nz = cos(vWorldPos.z * 0.05);
+      float nz = cos(movingZ * 0.05);
       vec3 colorA = mix(c1, c2, smoothstep(-1.0, 1.0, nx));
       vec3 colorB = mix(c3, c4, smoothstep(-1.0, 1.0, nz));
       vec3 baseColor = mix(colorA, colorB, smoothstep(-1.0, 1.0, nx * nz));
 
-      gl_FragColor = vec4(baseColor * 1.5, finalAlpha);
+      // Boost the color brightness heavily near the pointer
+      float colorBoost = mix(1.0, 1.0 + pointerFade * 1.5, uIsHomepage);
+      gl_FragColor = vec4(baseColor * 1.5 * colorBoost, min(finalAlpha, 1.0));
     }
   `
 };
@@ -186,8 +205,28 @@ function StreetLight({ position, rotation, color }: { position: [number, number,
   );
 }
 
-export default function CityGrid({ gridSize, roads = [], districts = [] }: CityGridProps) {
+export default function CityGrid({ gridSize, roads = [], districts = [], isHomepage = false }: CityGridProps) {
   const planeGeom = useMemo(() => new THREE.PlaneGeometry(1, 1), []);
+
+  const gridUniforms = useMemo(() => ({
+    uPointer: { value: new THREE.Vector2(-1000, -1000) }, // Start off-screen so it's not bright in the center before mouse moves
+    uIsHomepage: { value: isHomepage ? 1.0 : 0.0 },
+    uTime: { value: 0.0 },
+  }), [isHomepage]);
+
+  useFrame((state, delta) => {
+    gridUniforms.uTime.value += delta;
+    if (isHomepage) {
+      const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+      const raycaster = new THREE.Raycaster();
+      raycaster.setFromCamera(state.pointer, state.camera);
+      const intersect = new THREE.Vector3();
+      raycaster.ray.intersectPlane(plane, intersect);
+      if (intersect) {
+        gridUniforms.uPointer.value.set(intersect.x, intersect.z);
+      }
+    }
+  });
 
   const intersections = useMemo(() => {
     const list = [];
@@ -228,6 +267,7 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
         <shaderMaterial 
+          uniforms={gridUniforms}
           vertexShader={CircuitGridShader.vertexShader}
           fragmentShader={CircuitGridShader.fragmentShader}
           transparent={true}

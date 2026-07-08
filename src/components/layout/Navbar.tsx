@@ -59,7 +59,7 @@ export default function Navbar() {
       }}
     >
       {/* Logo */}
-      <Link
+      <a
         href="/"
         onMouseEnter={() => setLogoHovered(true)}
         onMouseLeave={() => setLogoHovered(false)}
@@ -79,13 +79,13 @@ export default function Navbar() {
             background: "linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
-            filter: logoHovered ? "drop-shadow(0 0 8px rgba(255, 102, 0, 0.6))" : "none",
+            filter: logoHovered ? "brightness(1.5) drop-shadow(0 0 10px rgba(255, 0, 136, 0.8))" : "none",
             transition: "all 0.3s ease",
           }}
         >
           CITY_OF_CODE
         </span>
-      </Link>
+      </a>
 
       {/* Links */}
       <div style={{ display: "flex", gap: "32px" }}>

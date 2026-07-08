@@ -138,130 +138,154 @@ export default function Home() {
         <AnimatePresence>
           {!repoInfo && !loading && (
             <motion.div
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -30 }}
-            transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
-            style={{
-              position: "absolute",
-              top: "45%",
-              left: "50%",
-              // Since we are animating 'y', we can't use transform for centering easily without conflicting with motion's transform.
-              // So we use framer-motion's 'x' and 'y' properties to handle the -50% centering.
-              x: "-50%",
-              y: "-50%",
-              zIndex: 10,
-              width: "90%",
-              maxWidth: "800px",
-              maxHeight: "calc(100vh - 140px)",
-              overflowY: "auto",
-              background: "rgba(10, 15, 30, 0.7)",
-              backdropFilter: "blur(12px)",
-              padding: "40px",
-              borderRadius: "24px",
-              border: "none",
-              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              textAlign: "center"
-            }}
-          >
-            <div style={{
-              fontSize: "1rem",
+              initial={{ opacity: 0, y: "-40%", x: "-50%" }}
+              animate={{ opacity: 1, y: "-50%", x: "-50%" }}
+              exit={{ opacity: 0, y: "-60%", x: "-50%" }}
+              transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
+              style={{
+                position: "absolute",
+                top: "50%",
+                left: "50%",
+                zIndex: 10,
+                width: "100%",
+                maxWidth: "1200px",
+                maxHeight: "calc(100vh - 140px)",
+                overflowY: "auto",
+                padding: "40px",
+                background: "transparent",
+                display: "flex",
+                flexDirection: "column",
+                alignItems: "center",
+                textAlign: "center"
+              }}
+            >
+            <div className="subheading-container" style={{
+              fontSize: "2rem",
               margin: "0 0 16px 0",
               fontWeight: "bold",
               letterSpacing: "2px",
               textTransform: "uppercase",
-              background: "linear-gradient(to right, #00ffff, #3b82f6, #ec4899)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-            }}>
-              Visualize Your Codebase
+              cursor: "default"
+            }}
+            >
+              {"Visualize Your Codebase".split("").map((c, i) => <span key={'v'+i} className="hover-char">{c === ' ' ? '\u00A0' : c}</span>)}
             </div>
             
             <h1 style={{
-              fontSize: "3.2rem",
+              fontSize: "6rem",
               margin: "0 0 16px 0",
-              fontWeight: "bold",
-              lineHeight: "1.15",
+              fontWeight: 900,
+              lineHeight: "1.1",
               letterSpacing: "0.5px",
-              background: "linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
               filter: "drop-shadow(0 15px 25px rgba(255, 102, 0, 0.4))",
-            }}>
-              Every file is a building.<br/> Every folder is a district.
+              WebkitMaskImage: "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)",
+              maskImage: "linear-gradient(to right, rgba(0,0,0,0) 0%, rgba(0,0,0,1) 25%, rgba(0,0,0,1) 75%, rgba(0,0,0,0) 100%)",
+              cursor: "default"
+            }}
+            >
+              {"Every file is a building.".split("").map((c, i) => <span key={'a'+i} className="hover-char">{c === ' ' ? '\u00A0' : c}</span>)}
+              <br/>
+              {"Every folder is a district.".split("").map((c, i) => <span key={'b'+i} className="hover-char">{c === ' ' ? '\u00A0' : c}</span>)}
             </h1>
             
-            <p style={{
-              fontSize: "1.1rem",
-              color: "rgba(255, 255, 255, 0.7)",
+            <p className="description-container" style={{
+              fontSize: "1.6rem",
+              fontWeight: "bold",
               margin: "0 0 32px 0",
               lineHeight: "1.6",
+              letterSpacing: "1px",
             }}>
-              Paste a repo and watch your code become a city.
+              {"Paste a repo and watch your code become a city.".split("").map((c, i) => <span key={'p'+i} className="hover-char">{c === ' ' ? '\u00A0' : c}</span>)}
             </p>
             
-            <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} style={{ width: "100%", position: "relative" }}>
-              <input
-                type="text"
-                value={url}
-                onChange={(e) => setUrl(e.target.value)}
-                placeholder="https://github.com/username/repo"
-                style={{
-                  width: "100%",
-                  background: "rgba(0, 0, 0, 0.4)",
-                  border: "1px solid rgba(0, 255, 255, 0.3)",
-                  borderRadius: "12px",
-                  color: "#fff",
-                  fontSize: "1.2rem",
-                  padding: "16px 24px",
-                  outline: "none",
-                  letterSpacing: "1px",
-                  transition: "all 0.3s ease",
-                }}
-                autoComplete="off"
-                spellCheck="false"
-                disabled={loading}
-                onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 15px rgba(59, 130, 246, 0.3)"; }}
-                onBlur={(e) => { e.target.style.borderColor = "rgba(0, 255, 255, 0.3)"; e.target.style.boxShadow = "none"; }}
-              />
+            <div style={{ width: "100%", maxWidth: "500px", display: "flex", flexDirection: "column", gap: "20px" }}>
+            <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} style={{ width: "100%" }}>
+              <div className="rainbow-border-wrap" style={{ display: "flex", alignItems: "center" }}>
+                <div className="border-spinner"></div>
+                <input
+                  type="text"
+                  value={url}
+                  onChange={(e) => setUrl(e.target.value)}
+                  placeholder="https://github.com/username/repo"
+                  style={{
+                    width: "100%",
+                    background: "transparent",
+                    border: "none",
+                    borderRadius: "12px",
+                    color: "#fff",
+                    fontSize: "1rem",
+                    padding: url ? "12px 140px 12px 20px" : "12px 20px",
+                    outline: "none",
+                    letterSpacing: "1px",
+                    transition: "all 0.3s ease",
+                  }}
+                  autoComplete="off"
+                  spellCheck="false"
+                  disabled={loading}
+                  onFocus={(e) => { e.target.parentElement?.classList.add('focused'); }}
+                  onBlur={(e) => { e.target.parentElement?.classList.remove('focused'); }}
+                />
+                <AnimatePresence>
+                  {url && (
+                    <motion.button
+                      initial={{ opacity: 0, scale: 0.9, x: 10 }}
+                      animate={{ opacity: 1, scale: 1, x: 0 }}
+                      exit={{ opacity: 0, scale: 0.9, x: 10 }}
+                      transition={{ duration: 0.2 }}
+                      type="submit"
+                      disabled={loading}
+                      style={{
+                        position: "absolute",
+                        right: "6px",
+                        background: "linear-gradient(to right, #ffcc00, #ff6600, #ff0088)",
+                        border: "none",
+                        borderRadius: "8px",
+                        color: "#fff",
+                        padding: "8px 16px",
+                        cursor: loading ? "not-allowed" : "pointer",
+                        fontSize: "0.85rem",
+                        fontWeight: "bold",
+                        textTransform: "uppercase",
+                        letterSpacing: "1px",
+                        opacity: loading ? 0.7 : 1,
+                        transition: "all 0.2s ease",
+                        zIndex: 10,
+                      }}
+                      onMouseEnter={(e) => {
+                        if (!loading) {
+                          e.currentTarget.style.transform = "scale(1.05)";
+                          e.currentTarget.style.boxShadow = "0 4px 15px rgba(255, 102, 0, 0.4)";
+                        }
+                      }}
+                      onMouseLeave={(e) => {
+                        e.currentTarget.style.transform = "scale(1)";
+                        e.currentTarget.style.boxShadow = "none";
+                      }}
+                    >
+                      {loading ? "PROCESSING..." : "GENERATE"}
+                    </motion.button>
+                  )}
+                </AnimatePresence>
+              </div>
             </form>
-
-            {/* Actions */}
-            <div style={{ marginTop: "24px", width: "100%" }}>
-              <button
-                onClick={() => handleGenerate()}
-                disabled={loading || !url}
+            
+            {error && !repoInfo && (
+              <div
                 style={{
                   width: "100%",
-                  background: "linear-gradient(to right, #00ffff, #3b82f6, #ec4899)",
-                  border: "none",
-                  borderRadius: "12px",
-                  color: "#fff",
-                  padding: "16px",
-                  cursor: (loading || !url) ? "not-allowed" : "pointer",
-                  fontSize: "1.1rem",
-                  fontWeight: "bold",
-                  textTransform: "uppercase",
-                  letterSpacing: "2px",
-                  opacity: (loading || !url) ? 0.5 : 1,
-                  transition: "all 0.2s ease",
-                }}
-                onMouseEnter={(e) => {
-                  if (!loading && url) {
-                    e.currentTarget.style.transform = "translateY(-2px)";
-                    e.currentTarget.style.boxShadow = "0 10px 20px rgba(236, 72, 153, 0.3)";
-                  }
-                }}
-                onMouseLeave={(e) => {
-                  e.currentTarget.style.transform = "none";
-                  e.currentTarget.style.boxShadow = "none";
+                  color: "#E52F20",
+                  fontSize: "14px",
+                  background: "rgba(4, 8, 16, 0.9)",
+                  padding: "12px 24px",
+                  borderRadius: "8px",
+                  border: "1px solid #E52F20",
+                  boxShadow: "0 0 20px rgba(229, 47, 32, 0.2)",
+                  marginTop: "-10px",
                 }}
               >
-                {loading ? "PROCESSING..." : "GENERATE CITY"}
-              </button>
+                {error}
+              </div>
+            )}
             </div>
           </motion.div>
           )}
@@ -322,11 +346,11 @@ export default function Home() {
 
 
         {/* Error message */}
-        {error && (
+        {error && repoInfo && (
           <div
             style={{
               position: "absolute",
-              top: repoInfo ? "80px" : "calc(50% + 140px)",
+              top: "80px",
               left: "50%",
               transform: "translateX(-50%)",
               zIndex: 10,

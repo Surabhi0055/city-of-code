@@ -89,8 +89,8 @@ const sparseWinFrag = `
       vec2 tinyUv = fract(vec2(adjustedUv.x * tinyCols, adjustedUv.y * tinyRows));
       float th = hash(tinyCell + uSeed * 2.1);
       
-      // 4% chance of a tiny white blinking dot in the dark space
-      if (th < 0.04) {
+      // 0.8% chance of a tiny white blinking dot in the dark space
+      if (th < 0.008) {
          if (tinyUv.x > 0.3 && tinyUv.x < 0.7 && tinyUv.y > 0.3 && tinyUv.y < 0.7) {
             float blink = step(0.5, sin(uTime * 8.0 + th * 20.0));
             gl_FragColor = vec4(vec3(1.0) * blink, 1.0);
