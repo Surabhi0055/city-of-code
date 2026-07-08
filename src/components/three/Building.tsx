@@ -39,6 +39,8 @@ const sparseWinVert = `
 `;
 
 const sparseWinFrag = `
+  uniform vec3  uWinTint;
+  uniform vec3  uWinNeon;
   uniform vec3  uNeon;
   uniform float uSeed;
   uniform float uWidth;
@@ -64,8 +66,12 @@ const sparseWinFrag = `
     float cols = max(2.0, floor(faceW   / 1.3));
     float rows = max(2.0, floor(uHeight / 1.0));
 
-    vec2 cell   = floor(vec2(vUv.x * cols, vUv.y * rows));
-    vec2 cellUv = fract(vec2(vUv.x * cols, vUv.y * rows));
+    // Moving windows when hovered
+    float scrollOffset = uHover > 0.5 ? uTime * 0.6 : 0.0;
+    vec2 animatedUv = vec2(vUv.x, vUv.y - scrollOffset);
+
+    vec2 cell   = floor(vec2(animatedUv.x * cols, animatedUv.y * rows));
+    vec2 cellUv = fract(vec2(animatedUv.x * cols, animatedUv.y * rows));
 
     float h1 = hash(cell);
     float h2 = hash(cell + vec2(5.7, 9.3));
@@ -127,13 +133,15 @@ const sparseWinFrag = `
     float edgeBright  = max(topGlow, bottomGlow);
     float brightFactor = mix(0.58, 1.0, edgeBright); // 0.58 in middle → 1.0 at edges
 
-    // Window colour: warm white 55 % | neon colour 45 %
-    float lumBoost = 0.55 + h2 * 0.45;
+    // Blinking effect from light shade to bright shades
+    float pulse = 0.5 + 0.5 * sin(uTime * (1.5 + h4 * 3.0) + h2 * 10.0); // 0.0 to 1.0
+    float lumBoost = mix(0.3, 1.3, pulse); // Light shade (0.3) to bright shade (1.3)
+    
     vec3 winColor;
     if (h2 < 0.55) {
-      winColor = vec3(lumBoost * 0.96, lumBoost * 0.89, lumBoost * 0.64); // warm white
+      winColor = uWinTint * lumBoost; 
     } else {
-      winColor = uNeon * lumBoost;
+      winColor = uWinNeon * lumBoost;
     }
     winColor *= brightFactor;
 
@@ -204,6 +212,7 @@ const signBoardVert = `
 `;
 const signBoardFrag = `
   uniform vec3 uColor;
+  uniform vec3 uBorderColor;
   uniform float uSeed;
   uniform float uType;
   varying vec2 vUv;
@@ -215,7 +224,7 @@ const signBoardFrag = `
     
     if (uType > 0.5) { // Hollow Neon Border Style
       if (isBorder) {
-        gl_FragColor = vec4(uColor, 1.0); // Bright neon border
+        gl_FragColor = vec4(uBorderColor, 1.0); // Bright neon border
         return;
       }
       
@@ -240,7 +249,7 @@ const signBoardFrag = `
     vec2 cellUv = fract(vec2(vUv.x, vUv.y * cells));
     
     if (isBorder) {
-      gl_FragColor = vec4(uColor * 0.4, 1.0);
+      gl_FragColor = vec4(uBorderColor * 0.4, 1.0);
       return;
     }
     float h = hash(cell + uSeed);
@@ -252,8 +261,8 @@ const signBoardFrag = `
   }
 `;
 
-function SignBoard({ w, d, h, side, heightFactor, yOffset, color, seed }: {
-  w: number; d: number; h: number; side: number; heightFactor: number; yOffset: number; color: string; seed: number;
+function SignBoard({ w, d, h, side, heightFactor, yOffset, color, borderColor, seed }: {
+  w: number; d: number; h: number; side: number; heightFactor: number; yOffset: number; color: string; borderColor: string; seed: number;
 }) {
   const sbW = 0.6 + heightFactor * 0.8; // big, wide boards
   const sbH = h * heightFactor;
@@ -272,12 +281,14 @@ function SignBoard({ w, d, h, side, heightFactor, yOffset, color, seed }: {
   const geom = useMemo(() => new THREE.BoxGeometry(sbW, sbH, sbD), [sbW, sbH, sbD]);
   const uniforms = useMemo(() => {
     const c = new THREE.Color(color);
+    const bc = new THREE.Color(borderColor);
     return { 
       uColor: { value: new THREE.Vector3(c.r, c.g, c.b) }, 
+      uBorderColor: { value: new THREE.Vector3(bc.r, bc.g, bc.b) },
       uSeed: { value: seed },
       uType: { value: seed % 2 } // Alternates between solid and hollow border
     };
-  }, [color, seed]);
+  }, [color, borderColor, seed]);
   
   return (
     <mesh position={pos} rotation={[0, rot, 0]} geometry={geom}>
@@ -407,6 +418,7 @@ function SlopedPeak({ baseW, baseD, body, color, startY }: {
 function BuildingComponent({ data, onClick }: BuildingProps) {
   const [hovered, setHovered] = useState(false);
   const rand = makeRandom(data.id);
+  const seedVal = useMemo(() => { let s = 0; for (let i = 0; i < data.id.length; i++) s += data.id.charCodeAt(i); return (s % 997) + 1; }, [data.id]);
 
   const style = useMemo(() => {
     const r1 = rand(); const r2 = rand(); const r3 = rand();
@@ -427,21 +439,55 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
     
     // Sign boards
     const signBoards = [];
+    
+    const isRed = ["#e11d48", "#e62b6f"].includes(data.emissiveColor);
+    const isPinkPurple = ["#d946ef", "#f472b6", "#9333ea", "#4338ca"].includes(data.emissiveColor);
+    const isBlue = ["#2563eb"].includes(data.emissiveColor);
+    const isCyan = ["#00ffff", "#38bdf8"].includes(data.emissiveColor);
+    
+    let boardBorderColor = data.emissiveColor;
+    if (isPinkPurple) {
+       boardBorderColor = "#00ffff"; // Cyan for pink/purple
+    } else if (isCyan) {
+       boardBorderColor = "#ec4899"; // Pink for cyan boards
+    } else if (isBlue) {
+       boardBorderColor = "#ffff00"; // Yellow for blue
+    } else if (isRed) {
+       boardBorderColor = "#ffff00"; // Yellow for red boards
+    }
+    
     if (archetype !== 0 && archetype !== 4) { // Not on glass towers or spires
        const boardCount = Math.floor(r2 * 5); // 0 to 4 boards per building
-       const boardPalette = ["#ff0055", "#00ffff", "#ffff00", "#ff00ff", "#00ff66"];
+       const baseHSL = { h: 0, s: 0, l: 0 };
+       const overrideColor = isRed ? "#ffff00" : (isCyan ? "#ec4899" : data.emissiveColor);
+       new THREE.Color(overrideColor).getHSL(baseHSL);
+       
+       const borderHSL = { h: 0, s: 0, l: 0 };
+       new THREE.Color(boardBorderColor).getHSL(borderHSL);
+
        for (let i = 0; i < boardCount; i++) {
+          // Generate a brighter shade: Lightness from 0.20 to 0.35
+          const shadeL = 0.20 + rand() * 0.15;
+          // Alternate hue for two different board colors per building (shift by ~0.15)
+          const hueOffset = (i % 2 === 0) ? 0 : 0.15; 
+          const color = "#" + new THREE.Color().setHSL((baseHSL.h + hueOffset) % 1.0, baseHSL.s, shadeL).getHexString();
+          
+          const bBorder = (i % 2 === 0) 
+            ? boardBorderColor 
+            : "#" + new THREE.Color().setHSL((borderHSL.h + 0.15) % 1.0, borderHSL.s, borderHSL.l).getHexString();
+
           signBoards.push({
              id: i,
              side: Math.floor(rand() * 4), // 0-3
              lenFactor: 0.15 + rand() * 0.75, // 15% to 90% of base height (small to large)
              yOffset: rand(), // 0.0 to 1.0
-             color: boardPalette[Math.floor(rand() * boardPalette.length)]
+             color: color,
+             borderColor: bBorder
           });
        }
     }
     
-    return { archetype, hasAntenna, antennaH, hasCrown, crownType, crownLayers, hasSetback, setbackR, narrowR, bandCount, vCount, signBoards };
+    return { archetype, hasAntenna, antennaH, hasCrown, crownType, crownLayers, hasSetback, setbackR, narrowR, bandCount, vCount, signBoards, boardBorderColor };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [data.id]);
 
@@ -460,21 +506,33 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
   // Shader uniforms
   const neonVec = useMemo(() => { const c = new THREE.Color(data.emissiveColor); return new THREE.Vector3(c.r, c.g, c.b); }, [data.emissiveColor]);
   const bodyVec = useMemo(() => { const hex = tintedBody(data.emissiveColor); const c = new THREE.Color(hex); return new THREE.Vector3(c.r, c.g, c.b); }, [data.emissiveColor]);
-  const seedVal = useMemo(() => { let s = 0; for (let i = 0; i < data.id.length; i++) s += data.id.charCodeAt(i); return (s % 997) + 1; }, [data.id]);
+  
+  const isRedColor = ["#e11d48", "#e62b6f"].includes(data.emissiveColor);
+  const isPinkColor = ["#d946ef", "#f472b6"].includes(data.emissiveColor);
+  
+  const winTintVec = useMemo(() => {
+    const c = new THREE.Color(isPinkColor ? "#00ffff" : (isRedColor ? "#3b82f6" : "#f5e3a3"));
+    return new THREE.Vector3(c.r, c.g, c.b);
+  }, [isPinkColor, isRedColor]);
+
+  const winNeonVec = useMemo(() => {
+    const c = new THREE.Color(isRedColor ? "#3b82f6" : data.emissiveColor);
+    return new THREE.Vector3(c.r, c.g, c.b);
+  }, [isRedColor, data.emissiveColor]);
 
   const baseUniforms = useMemo(() => ({
-    uNeon: { value: neonVec }, uSeed: { value: seedVal },
+    uWinTint: { value: winTintVec }, uWinNeon: { value: winNeonVec }, uNeon: { value: neonVec }, uSeed: { value: seedVal },
     uWidth: { value: data.width }, uHeight: { value: baseH }, uDepth: { value: data.depth }, uBody: { value: bodyVec },
     uTime: { value: 0 },
     uHover: { value: 0 }
-  }), [neonVec, seedVal, data.width, baseH, data.depth, bodyVec]);
+  }), [winTintVec, winNeonVec, neonVec, seedVal, data.width, baseH, data.depth, bodyVec]);
 
   const topUniforms = useMemo(() => ({
-    uNeon: { value: neonVec }, uSeed: { value: seedVal + 31 },
+    uWinTint: { value: winTintVec }, uWinNeon: { value: winNeonVec }, uNeon: { value: neonVec }, uSeed: { value: seedVal + 31 },
     uWidth: { value: topW }, uHeight: { value: topH }, uDepth: { value: topD }, uBody: { value: bodyVec },
     uTime: { value: 0 },
     uHover: { value: 0 }
-  }), [neonVec, seedVal, topW, topH, topD, bodyVec]);
+  }), [winTintVec, winNeonVec, neonVec, seedVal, topW, topH, topD, bodyVec]);
   
   useFrame(({ clock }) => {
     baseUniforms.uTime.value = clock.elapsedTime;
@@ -490,8 +548,8 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
   const edgeColor   = hovered ? "#ffffff" : data.emissiveColor;
   const edgeOpacity = hovered ? 1.0 : 0.80;
 
-  const stripPalette = ["#00ffff", "#ff00ff", "#ffff00", "#0088ff", "#ff8800"];
-  const stripColor = hovered ? "#ffffff" : stripPalette[seedVal % stripPalette.length];
+  // Use the bright district base color for the straight neon strips
+  const stripColor = hovered ? "#ffffff" : data.emissiveColor;
 
   const bands = useMemo(() => {
     if (style.bandCount === 0) return [];
@@ -526,7 +584,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
           <VStrip key={i} x={x} z={data.depth / 2 + 0.02} rot={0} height={baseH} color={stripColor} />
         ))}
         {style.signBoards.map((b) => (
-          <SignBoard key={b.id} w={data.width} d={data.depth} h={baseH} side={b.side} heightFactor={b.lenFactor} yOffset={b.yOffset} color={b.color} seed={seedVal + b.id * 10} />
+          <SignBoard key={b.id} w={data.width} d={data.depth} h={baseH} side={b.side} heightFactor={b.lenFactor} yOffset={b.yOffset} color={b.color} borderColor={b.borderColor} seed={seedVal + b.id * 10} />
         ))}
       </group>
 

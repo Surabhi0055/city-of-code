@@ -15,7 +15,6 @@ export default function Footer() {
         zIndex: 50,
         background: "linear-gradient(to top, rgba(4, 8, 16, 0.95) 0%, rgba(4, 8, 16, 0) 100%)",
         borderTop: "1px solid rgba(255, 0, 170, 0.2)",
-        fontFamily: "monospace",
         color: "#008b8b",
         fontSize: "0.85rem",
       }}

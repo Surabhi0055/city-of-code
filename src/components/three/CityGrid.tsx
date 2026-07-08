@@ -87,15 +87,15 @@ const CircuitGridShader = {
       float distToCenter = length(vWorldPos.xz);
       float centerFade = smoothstep(80.0, 40.0, distToCenter);
 
-      // Combine grids - make the big squares subtle (0.2) and the inside small lines brighter (0.5)
-      float finalAlpha = max(majorGrid * 0.2, minorGrid * 0.5) * camFade * centerFade;
+      // Combine grids - make the big squares subtle (0.4) and the inside small lines brighter (0.8)
+      float finalAlpha = max(majorGrid * 0.4, minorGrid * 0.8) * camFade * centerFade;
       if (finalAlpha < 0.01) discard;
 
       // Global multi-colored grid
-      vec3 c1 = vec3(0.0, 1.0, 1.0);
-      vec3 c2 = vec3(1.0, 0.0, 1.0);
-      vec3 c3 = vec3(0.2, 0.2, 1.0);
-      vec3 c4 = vec3(0.6, 0.0, 1.0);
+      vec3 c1 = vec3(0.0, 0.8, 0.8); // Softer Cyan
+      vec3 c2 = vec3(0.85, 0.27, 0.93); // Fuchsia
+      vec3 c3 = vec3(0.14, 0.38, 0.92); // Rich Blue
+      vec3 c4 = vec3(0.57, 0.2, 0.91); // Rich Purple
       float nx = sin(vWorldPos.x * 0.05);
       float nz = cos(vWorldPos.z * 0.05);
       vec3 colorA = mix(c1, c2, smoothstep(-1.0, 1.0, nx));
@@ -107,13 +107,54 @@ const CircuitGridShader = {
   `
 };
 
+const dashedShaderArgs = {
+  uniforms: { color: { value: new THREE.Color("#e0e0e0") } },
+  vertexShader: `
+    varying vec3 vWorldPos;
+    void main() {
+      vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+      vWorldPos = worldPosition.xyz;
+      gl_Position = projectionMatrix * viewMatrix * worldPosition;
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 color;
+    varying vec3 vWorldPos;
+    void main() {
+      float dist = vWorldPos.x + vWorldPos.z;
+      if (mod(dist, 2.4) > 1.2) discard;
+      gl_FragColor = vec4(color, 0.9);
+    }
+  `
+};
+
+const lightPoolShaderArgs = {
+  uniforms: { color: { value: new THREE.Color("#ffdd44") } },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * viewMatrix * modelMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform vec3 color;
+    varying vec2 vUv;
+    void main() {
+      float dist = distance(vUv, vec2(0.5));
+      float alpha = smoothstep(0.5, 0.0, dist);
+      gl_FragColor = vec4(color, alpha * 0.5);
+    }
+  `
+};
+
 const roadStencilMat = new THREE.MeshBasicMaterial({ colorWrite: false, depthWrite: false });
 roadStencilMat.stencilWrite = true;
 roadStencilMat.stencilFunc = THREE.AlwaysStencilFunc;
 roadStencilMat.stencilZPass = THREE.IncrementWrapStencilOp;
 
 function StreetLight({ position, rotation, color }: { position: [number, number, number], rotation: [number, number, number], color: string }) {
-  const lightColor = "#ffaa00"; // Golden glow
+  const lightColor = "#ffdd44"; // Warm yellow glow
   return (
     <group position={position} rotation={rotation}>
       {/* Dark pole */}
@@ -131,10 +172,15 @@ function StreetLight({ position, rotation, color }: { position: [number, number,
         <sphereGeometry args={[0.08]} />
         <meshBasicMaterial color={lightColor} transparent opacity={0.8} blending={THREE.AdditiveBlending} depthWrite={false} />
       </mesh>
-      {/* Flat circular pool of light on road */}
+      {/* Soft blurred circular pool of light on road */}
       <mesh position={[0.04, 0.002, 0]} rotation={[-Math.PI / 2, 0, 0]}>
-        <circleGeometry args={[0.4, 16]} />
-        <meshBasicMaterial color={lightColor} transparent opacity={0.35} blending={THREE.AdditiveBlending} depthWrite={false} />
+        <planeGeometry args={[1.0, 1.0]} />
+        <shaderMaterial 
+          args={[lightPoolShaderArgs]} 
+          transparent={true} 
+          depthWrite={false} 
+          blending={THREE.AdditiveBlending}
+        />
       </mesh>
     </group>
   );
@@ -223,9 +269,10 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
         const crossW = isHoriz ? surfaceL : surfaceW;
         const edgeOffset = crossW / 2 - 0.05;
 
-        // Specific road colors as requested
-        const trackColor = "#00ffff"; // Cyan center tracks
-        const edgeColor = "#ff00ff"; // Pink borders
+        // Specific road colors as requested - changed to richer, less blinding neon
+        // Specific road colors as requested - changed to richer, less blinding neon
+        const trackColor = "#06b6d4"; // Rich teal/cyan tracks
+        const edgeColor = "#06b6d4"; // Teal/cyan borders
 
         // Generate street lights
         const lights = [];
@@ -291,40 +338,23 @@ export default function CityGrid({ gridSize, roads = [], districts = [] }: CityG
               </>
             )}
 
-            {/* Track 1 */}
+            {/* Center Dashed Track */}
             <mesh 
-              position={isHoriz ? [0, lineY, -trackOffset] : [-trackOffset, lineY, 0]} 
+              position={[0, lineY, 0]} 
               rotation={[-Math.PI / 2, 0, 0]} 
               geometry={planeGeom} 
-              scale={isHoriz ? [lineLength, lineThickness, 1] : [lineThickness, lineLength, 1]} 
+              scale={isHoriz ? [lineLength, lineThickness * 1.5, 1] : [lineThickness * 1.5, lineLength, 1]} 
               frustumCulled={true}
               renderOrder={1}
             >
-              <meshBasicMaterial color={trackColor} toneMapped={false} transparent opacity={0.95} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
-            </mesh>
-
-            {/* Track 2 */}
-            <mesh 
-              position={isHoriz ? [0, lineY, trackOffset] : [trackOffset, lineY, 0]} 
-              rotation={[-Math.PI / 2, 0, 0]} 
-              geometry={planeGeom} 
-              scale={isHoriz ? [lineLength, lineThickness, 1] : [lineThickness, lineLength, 1]} 
-              frustumCulled={true}
-              renderOrder={1}
-            >
-              <meshBasicMaterial color={trackColor} toneMapped={false} transparent opacity={0.95} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
-            </mesh>
-
-            {/* Tracks glow */}
-            <mesh 
-              position={[0, lineY - 0.001, 0]} 
-              rotation={[-Math.PI / 2, 0, 0]} 
-              geometry={planeGeom} 
-              scale={isHoriz ? [lineLength, trackOffset * 2.5, 1] : [trackOffset * 2.5, lineLength, 1]} 
-              frustumCulled={true}
-              renderOrder={1}
-            >
-              <meshBasicMaterial color={trackColor} toneMapped={false} transparent opacity={0.10} depthWrite={false} blending={THREE.AdditiveBlending} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
+              <shaderMaterial 
+                args={[dashedShaderArgs]} 
+                transparent={true} 
+                depthWrite={false} 
+                stencilWrite={!isElevated} 
+                stencilRef={1} 
+                stencilFunc={THREE.EqualStencilFunc} 
+              />
             </mesh>
 
             {!isAlley && (

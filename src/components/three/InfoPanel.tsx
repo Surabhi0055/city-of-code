@@ -6,6 +6,7 @@ import { BuildingData } from "@/lib/cityLayout";
 interface InfoPanelProps {
   building: BuildingData | null;
   explanation: string;
+  fileCode?: string;
   isLoading: boolean;
   onClose: () => void;
   onAnalyze: () => void;
@@ -69,6 +70,7 @@ function formatText(text: string, color: string, isLoading: boolean) {
 export default function InfoPanel({
   building,
   explanation,
+  fileCode,
   isLoading,
   onClose,
   onAnalyze,
@@ -296,16 +298,38 @@ export default function InfoPanel({
 
           {/* State 3: Streamed Explanation */}
           {explanation && (
-            <div
-              style={{
-                fontSize: "16px", 
-                color: "#e2e8f0",
-                lineHeight: "2.0",
-                whiteSpace: "pre-wrap",
-                wordBreak: "break-word",
-              }}
-            >
-              {formatText(explanation, color, isLoading)}
+            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
+              {/* Added code display block */}
+              {fileCode && (
+                <div style={{
+                  background: "rgba(0,0,0,0.4)",
+                  border: `1px solid ${color}44`,
+                  borderRadius: "8px",
+                  padding: "16px",
+                  maxHeight: "300px",
+                  overflowY: "auto",
+                  fontSize: "13px",
+                  color: "#a8b2d1",
+                  scrollbarWidth: "thin",
+                  scrollbarColor: `${color}44 transparent`
+                }}>
+                  <pre style={{ margin: 0, fontFamily: "inherit", whiteSpace: "pre-wrap", wordBreak: "break-all" }}>
+                    <code>{fileCode}</code>
+                  </pre>
+                </div>
+              )}
+
+              <div
+                style={{
+                  fontSize: "16px", 
+                  color: "#e2e8f0",
+                  lineHeight: "2.0",
+                  whiteSpace: "pre-wrap",
+                  wordBreak: "break-word",
+                }}
+              >
+                {formatText(explanation, color, isLoading)}
+              </div>
             </div>
           )}
         </div>
@@ -324,9 +348,6 @@ export default function InfoPanel({
             }}
           >
             <span>AI SCAN COMPLETE</span>
-            <span style={{ color: color, fontWeight: 600, textShadow: `0 0 8px ${color}88` }}>
-              [ SECURE CONNECTION ]
-            </span>
           </div>
         )}
       </div>

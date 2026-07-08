@@ -24,6 +24,7 @@ export default function Home() {
   // Info panel state
   const [selectedBuilding, setSelectedBuilding] = useState<BuildingData | null>(null);
   const [explanation, setExplanation] = useState("");
+  const [fileCode, setFileCode] = useState("");
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
   // Store owner/repo for file fetching
@@ -67,6 +68,7 @@ export default function Home() {
   const handleSelectBuilding = useCallback((data: BuildingData) => {
     setSelectedBuilding(data);
     setExplanation("");
+    setFileCode("");
     setIsAnalyzing(false);
   }, []);
 
@@ -76,6 +78,7 @@ export default function Home() {
       if (!repoInfo) return;
 
       setExplanation("");
+      setFileCode("");
       setIsAnalyzing(true);
 
       try {
@@ -85,6 +88,7 @@ export default function Home() {
           repoInfo.repo,
           data.filePath
         );
+        setFileCode(content);
 
         // 2. Stream Claude's explanation word by word
         await streamFileExplanation(
@@ -112,6 +116,7 @@ export default function Home() {
   function handleClosePanel() {
     setSelectedBuilding(null);
     setExplanation("");
+    setFileCode("");
     setIsAnalyzing(false);
   }
 
@@ -139,7 +144,7 @@ export default function Home() {
             transition={{ duration: 0.8, ease: "easeOut", delay: 0.2 }}
             style={{
               position: "absolute",
-              top: "50%",
+              top: "45%",
               left: "50%",
               // Since we are animating 'y', we can't use transform for centering easily without conflicting with motion's transform.
               // So we use framer-motion's 'x' and 'y' properties to handle the -50% centering.
@@ -148,54 +153,97 @@ export default function Home() {
               zIndex: 10,
               width: "90%",
               maxWidth: "800px",
-              fontFamily: "monospace",
+              maxHeight: "calc(100vh - 140px)",
+              overflowY: "auto",
+              background: "rgba(10, 15, 30, 0.7)",
+              backdropFilter: "blur(12px)",
+              padding: "40px",
+              borderRadius: "24px",
+              border: "none",
+              boxShadow: "0 20px 40px rgba(0,0,0,0.5)",
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              textAlign: "center"
             }}
           >
-            <div style={{ color: "#ff0088", fontSize: "1.2rem", marginBottom: "8px" }}>
-              $ &gt;&gt;
+            <div style={{
+              fontSize: "1rem",
+              margin: "0 0 16px 0",
+              fontWeight: "bold",
+              letterSpacing: "2px",
+              textTransform: "uppercase",
+              background: "linear-gradient(to right, #00ffff, #3b82f6, #ec4899)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}>
+              Visualize Your Codebase
             </div>
-            <h1 style={{ color: "#00aaff", fontSize: "2.5rem", margin: "0 0 16px 0", fontWeight: "normal", letterSpacing: "1px" }}>
-              Enter GitHub Repository URL to Visualize
+            
+            <h1 style={{
+              fontSize: "3.2rem",
+              margin: "0 0 16px 0",
+              fontWeight: "bold",
+              lineHeight: "1.15",
+              letterSpacing: "0.5px",
+              background: "linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: "drop-shadow(0 15px 25px rgba(255, 102, 0, 0.4))",
+            }}>
+              Every file is a building.<br/> Every folder is a district.
             </h1>
             
+            <p style={{
+              fontSize: "1.1rem",
+              color: "rgba(255, 255, 255, 0.7)",
+              margin: "0 0 32px 0",
+              lineHeight: "1.6",
+            }}>
+              Paste a repo and watch your code become a city.
+            </p>
+            
             <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} style={{ width: "100%", position: "relative" }}>
-              <span style={{ position: "absolute", left: 0, top: "2px", color: "#ff00aa" }}>{">"}</span>
               <input
                 type="text"
                 value={url}
                 onChange={(e) => setUrl(e.target.value)}
-                placeholder="[https://github.com/username/repo]"
+                placeholder="https://github.com/username/repo"
                 style={{
                   width: "100%",
-                  background: "transparent",
-                  border: "none",
-                  borderBottom: "2px solid #008b8b",
-                  color: "#00aaff",
+                  background: "rgba(0, 0, 0, 0.4)",
+                  border: "1px solid rgba(0, 255, 255, 0.3)",
+                  borderRadius: "12px",
+                  color: "#fff",
                   fontSize: "1.2rem",
-                  padding: "4px 4px 4px 24px",
+                  padding: "16px 24px",
                   outline: "none",
-                  fontFamily: "monospace",
                   letterSpacing: "1px",
+                  transition: "all 0.3s ease",
                 }}
                 autoComplete="off"
                 spellCheck="false"
                 disabled={loading}
+                onFocus={(e) => { e.target.style.borderColor = "#3b82f6"; e.target.style.boxShadow = "0 0 15px rgba(59, 130, 246, 0.3)"; }}
+                onBlur={(e) => { e.target.style.borderColor = "rgba(0, 255, 255, 0.3)"; e.target.style.boxShadow = "none"; }}
               />
             </form>
 
             {/* Actions */}
-            <div style={{ display: "flex", gap: "20px", alignItems: "center", marginTop: "10px" }}>
+            <div style={{ marginTop: "24px", width: "100%" }}>
               <button
                 onClick={() => handleGenerate()}
                 disabled={loading || !url}
                 style={{
-                  background: "transparent",
-                  border: "1px solid #ff00aa",
-                  color: "#ff00aa",
-                  padding: "8px 16px",
+                  width: "100%",
+                  background: "linear-gradient(to right, #00ffff, #3b82f6, #ec4899)",
+                  border: "none",
+                  borderRadius: "12px",
+                  color: "#fff",
+                  padding: "16px",
                   cursor: (loading || !url) ? "not-allowed" : "pointer",
-                  fontFamily: "monospace",
-                  fontSize: "1rem",
+                  fontSize: "1.1rem",
+                  fontWeight: "bold",
                   textTransform: "uppercase",
                   letterSpacing: "2px",
                   opacity: (loading || !url) ? 0.5 : 1,
@@ -203,16 +251,16 @@ export default function Home() {
                 }}
                 onMouseEnter={(e) => {
                   if (!loading && url) {
-                    e.currentTarget.style.background = "rgba(255, 0, 170, 0.2)";
-                    e.currentTarget.style.boxShadow = "0 0 10px rgba(255, 0, 170, 0.5)";
+                    e.currentTarget.style.transform = "translateY(-2px)";
+                    e.currentTarget.style.boxShadow = "0 10px 20px rgba(236, 72, 153, 0.3)";
                   }
                 }}
                 onMouseLeave={(e) => {
-                  e.currentTarget.style.background = "transparent";
+                  e.currentTarget.style.transform = "none";
                   e.currentTarget.style.boxShadow = "none";
                 }}
               >
-                {loading ? "[PROCESSING...]" : "[GENERATE]"}
+                {loading ? "PROCESSING..." : "GENERATE CITY"}
               </button>
             </div>
           </motion.div>
@@ -367,6 +415,7 @@ export default function Home() {
           <InfoPanel
             building={selectedBuilding}
             explanation={explanation}
+            fileCode={fileCode}
             isLoading={isAnalyzing}
             onClose={handleClosePanel}
             onAnalyze={() => selectedBuilding && handleBuildingClick(selectedBuilding)}

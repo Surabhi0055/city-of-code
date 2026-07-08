@@ -2,9 +2,39 @@
 
 import Link from "next/link";
 import { useState } from "react";
+import { motion } from "framer-motion";
+
+function SunLogo({ isHovered }: { isHovered: boolean }) {
+  return (
+    <svg width="40" height="40" viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="sunGradNav" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffcc00" />
+          <stop offset="50%" stopColor="#ff6600" />
+          <stop offset="100%" stopColor="#ff0088" />
+        </linearGradient>
+        
+        <mask id="stripeMaskNav">
+          <rect width="100" height="100" fill="white" />
+          <motion.g
+            animate={isHovered ? { y: [0, -10] } : { y: 0 }}
+            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+          >
+            {[...Array(10)].map((_, i) => (
+              <rect key={i} x="0" y={50 + i * 10} width="100" height="4.5" fill="black" />
+            ))}
+          </motion.g>
+          <rect x="0" y="0" width="100" height="50" fill="white" />
+        </mask>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#sunGradNav)" mask="url(#stripeMaskNav)" />
+    </svg>
+  );
+}
 
 export default function Navbar() {
   const [hovered, setHovered] = useState<string | null>(null);
+  const [logoHovered, setLogoHovered] = useState(false);
 
   const navLinks = [
     { name: "[HOME]", path: "/" },
@@ -26,22 +56,35 @@ export default function Navbar() {
         zIndex: 50,
         background: "linear-gradient(to bottom, rgba(4, 8, 16, 0.9) 0%, rgba(4, 8, 16, 0) 100%)",
         borderBottom: "1px solid rgba(0, 139, 139, 0.3)",
-        fontFamily: "monospace",
       }}
     >
       {/* Logo */}
       <Link
         href="/"
+        onMouseEnter={() => setLogoHovered(true)}
+        onMouseLeave={() => setLogoHovered(false)}
         style={{
-          fontSize: "1.5rem",
-          fontWeight: "bold",
-          color: "#00aaff",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
           textDecoration: "none",
-          letterSpacing: "2px",
-          textShadow: "0 0 10px rgba(0, 170, 255, 0.5)",
         }}
       >
-        CITY_OF_CODE<span style={{ color: "#ff00aa" }}>.exe</span>
+        <SunLogo isHovered={logoHovered} />
+        <span
+          style={{
+            fontSize: "1.5rem",
+            fontWeight: "bold",
+            letterSpacing: "2px",
+            background: "linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088)",
+            WebkitBackgroundClip: "text",
+            WebkitTextFillColor: "transparent",
+            filter: logoHovered ? "drop-shadow(0 0 8px rgba(255, 102, 0, 0.6))" : "none",
+            transition: "all 0.3s ease",
+          }}
+        >
+          CITY_OF_CODE
+        </span>
       </Link>
 
       {/* Links */}

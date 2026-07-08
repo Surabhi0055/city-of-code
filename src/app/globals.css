@@ -1,5 +1,14 @@
 @import "tailwindcss";
 
+@theme {
+  --font-sans: "Molgan", ui-sans-serif, system-ui, sans-serif;
+}
+
+@font-face {
+  font-family: 'Molgan';
+  src: local('Molgan'), local('Molgan-Regular');
+}
+
 * {
   margin: 0;
   padding: 0;
@@ -12,6 +21,7 @@ body {
   height: 100%;
   overflow: hidden;
   background-color: #06001a;
+  font-family: "Molgan", sans-serif;
 }
 
 @keyframes spin {

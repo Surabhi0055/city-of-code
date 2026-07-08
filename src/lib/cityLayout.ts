@@ -27,16 +27,16 @@ export interface RoadData {
 }
 
 const DISTRICT_COLORS = [
-  { base: "#050510", emissive: "#ff007f" },  // neon pink  — PRIMARY (largest folder)
-  { base: "#050510", emissive: "#0088ff" },  // neon blue  — 2nd largest
-  { base: "#050510", emissive: "#ff00cc" },  // magenta    — 3rd
-  { base: "#050510", emissive: "#00aaff" },  // sky blue   — 4th
-  { base: "#050510", emissive: "#ff44cc" },  // pink       — 5th
-  { base: "#050510", emissive: "#3366ff" },  // deep blue  — 6th
-  { base: "#050510", emissive: "#cc00ff" },  // purple     — 7th
-  { base: "#050510", emissive: "#00e5ff" },  // cyan       — 8th
-  { base: "#050510", emissive: "#ff6600" },  // orange     — 9th
-  { base: "#050510", emissive: "#ff2244" },  // red        — 10th
+  { base: "#050510", emissive: "#00ffff" },  // pure cyan       — PRIMARY (largest folder)
+  { base: "#050510", emissive: "#2563eb" },  // richer blue  — 2nd largest
+  { base: "#050510", emissive: "#d946ef" },  // aesthetic fuchsia    — 3rd
+  { base: "#050510", emissive: "#38bdf8" },  // softer sky blue   — 4th
+  { base: "#050510", emissive: "#f472b6" },  // pastel pink       — 5th
+  { base: "#050510", emissive: "#4338ca" },  // deep indigo  — 6th
+  { base: "#050510", emissive: "#9333ea" },  // rich purple     — 7th
+  { base: "#050510", emissive: "#e11d48" },  // rose red  — 8th
+  { base: "#050510", emissive: "#f97316" },  // burnt orange     — 9th
+  { base: "#050510", emissive: "#e62b6f" },  // softer neon pink        — 10th
 ];
 
 function getBuildingType(size: number, fileName: string): BuildingData["buildingType"] {
@@ -55,6 +55,14 @@ function seededRandom(seed: number) {
 
 function getFileHeight(size: number, type: BuildingData["buildingType"], seed: number): number {
   let baseHeight = Math.max(2, Math.log2(size / 100));
+  
+  // Significantly boost height for very large files so they stand out as major landmarks
+  if (size > 10000) {
+    // Cap the bonus to 25 so massive generated files don't break the skybox
+    const bonus = Math.min((size - 10000) / 1500, 25);
+    baseHeight += bonus;
+  }
+
   let multiplier = 1.0;
   switch (type) {
     case "tower": multiplier = 2.0; break;    // Tall but not absurd

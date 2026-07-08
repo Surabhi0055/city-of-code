@@ -43,10 +43,10 @@ export default function RetroMountains() {
       {/* Neon violet edge outline on the mountain ridgeline */}
       <lineSegments geometry={edgeGeom}>
         <lineBasicMaterial
-          color="#9900ff"
+          color="#d946ef"
           toneMapped={false}
           transparent
-          opacity={0.35}
+          opacity={0.8}
           fog={false}
         />
       </lineSegments>

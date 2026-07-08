@@ -43,7 +43,6 @@ export function LoadingOverlay({ loading }: { loading: boolean }) {
               animate={{ opacity: [0.4, 1, 0.4] }}
               transition={{ repeat: Infinity, duration: 1.5, ease: "easeInOut" }}
               style={{
-                fontFamily: "monospace",
                 color: "#ff00aa",
                 fontSize: "1.2rem",
                 letterSpacing: "4px",
