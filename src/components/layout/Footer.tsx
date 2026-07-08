@@ -1,45 +1,129 @@
 "use client";
 
-export default function Footer() {
+import { useState } from "react";
+import { motion } from "framer-motion";
+
+function SunLogo({ isHovered }: { isHovered: boolean }) {
   return (
-    <footer
+    <svg width="30" height="30" viewBox="0 0 100 100">
+      <defs>
+        <linearGradient id="sunGradFooter" x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#ffcc00" />
+          <stop offset="50%" stopColor="#ff6600" />
+          <stop offset="100%" stopColor="#ff0088" />
+        </linearGradient>
+        
+        <mask id="stripeMaskFooter">
+          <rect width="100" height="100" fill="white" />
+          <motion.g
+            animate={isHovered ? { y: [0, -10] } : { y: 0 }}
+            transition={{ repeat: Infinity, duration: 0.8, ease: "linear" }}
+          >
+            {[...Array(10)].map((_, i) => (
+              <rect key={i} x="0" y={50 + i * 10} width="100" height="4.5" fill="black" />
+            ))}
+          </motion.g>
+          <rect x="0" y="0" width="100" height="50" fill="white" />
+        </mask>
+      </defs>
+      <circle cx="50" cy="50" r="50" fill="url(#sunGradFooter)" mask="url(#stripeMaskFooter)" />
+    </svg>
+  );
+}
+
+export default function Footer() {
+  const [logoHovered, setLogoHovered] = useState(false);
+  const [hoveredLink, setHoveredLink] = useState<string | null>(null);
+
+  const socialLinks = [
+    { name: "GITHUB", url: "https://github.com/Surabhi0055" },
+    { name: "LINKEDIN", url: "https://linkedin.com/in/surabhi0055" }
+  ];
+
+  return (
+    <div
       style={{
         position: "fixed",
-        bottom: 0,
-        left: 0,
-        width: "100%",
-        padding: "12px 32px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        bottom: "24px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "calc(100% - 64px)",
+        maxWidth: "1200px",
         zIndex: 50,
-        background: "linear-gradient(to top, rgba(4, 8, 16, 0.95) 0%, rgba(4, 8, 16, 0) 100%)",
-        borderTop: "1px solid rgba(255, 0, 170, 0.2)",
-        color: "#008b8b",
-        fontSize: "0.85rem",
       }}
     >
-      <div style={{ display: "flex", gap: "16px", alignItems: "center" }}>
-        <span>SYS.VER 1.0</span>
-      </div>
-
-      <div>
-        © {new Date().getFullYear()} CITY OF CODE. ALL RIGHTS RESERVED.
-      </div>
-
-      <div style={{ display: "flex", gap: "16px" }}>
-        <a 
-          href="https://github.com/Surabhi0055"
-          target="_blank"
-          rel="noopener noreferrer"
-          style={{ cursor: "pointer", transition: "color 0.2s", color: "#008b8b", textDecoration: "none" }} 
-          onMouseEnter={(e) => e.currentTarget.style.color = "#ff00aa"} 
-          onMouseLeave={(e) => e.currentTarget.style.color = "#008b8b"}
+      <div className="rainbow-border-wrap" style={{ background: "transparent" }}>
+        <div className="border-spinner"></div>
+        <footer
+          style={{
+            position: "relative",
+            zIndex: 1,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "12px 32px",
+            background: "rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            borderRadius: "12px",
+            boxShadow: "inset 0 0 10px rgba(255, 255, 255, 0.05)",
+          }}
         >
-          [GITHUB]
-        </a>
-        <span style={{ cursor: "pointer", transition: "color 0.2s" }} onMouseEnter={(e) => e.currentTarget.style.color = "#ff00aa"} onMouseLeave={(e) => e.currentTarget.style.color = "#008b8b"}>[TWITTER]</span>
+          {/* Logo & Text */}
+          <a
+            href="/"
+            onMouseEnter={() => setLogoHovered(true)}
+            onMouseLeave={() => setLogoHovered(false)}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: "10px",
+              textDecoration: "none",
+            }}
+          >
+            <SunLogo isHovered={logoHovered} />
+            <span
+              style={{
+                fontSize: "1.2rem",
+                fontWeight: "bold",
+                letterSpacing: "2px",
+                background: "linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088)",
+                WebkitBackgroundClip: "text",
+                WebkitTextFillColor: "transparent",
+                filter: logoHovered ? "brightness(1.5) drop-shadow(0 0 10px rgba(255, 0, 136, 0.8))" : "none",
+                transition: "all 0.3s ease",
+              }}
+            >
+              CITY_OF_CODE
+            </span>
+          </a>
+
+          {/* Social Links */}
+          <div style={{ display: "flex", gap: "24px" }}>
+            {socialLinks.map((link) => (
+              <a
+                key={link.name}
+                href={link.url}
+                target="_blank"
+                rel="noopener noreferrer"
+                onMouseEnter={() => setHoveredLink(link.name)}
+                onMouseLeave={() => setHoveredLink(null)}
+                style={{
+                  color: hoveredLink === link.name ? "#ff00aa" : "#008b8b",
+                  textDecoration: "none",
+                  fontSize: "1rem",
+                  fontWeight: "bold",
+                  letterSpacing: "1px",
+                  transition: "all 0.2s ease",
+                  textShadow: hoveredLink === link.name ? "0 0 8px rgba(255, 0, 170, 0.6)" : "none",
+                }}
+              >
+                {link.name}
+              </a>
+            ))}
+          </div>
+        </footer>
       </div>
-    </footer>
+    </div>
   );
 }

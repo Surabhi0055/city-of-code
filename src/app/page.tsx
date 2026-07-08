@@ -291,57 +291,7 @@ export default function Home() {
           )}
         </AnimatePresence>
 
-        {/* Input UI for when city is loaded */}
-        {repoInfo && (
-          <div
-            style={{
-              position: "absolute",
-              top: "24px",
-              left: "50%",
-              transform: "translateX(-50%)",
-              zIndex: 10,
-              display: "flex",
-              gap: "8px",
-              alignItems: "center",
-            }}
-          >
-            <input
-              type="text"
-              value={url}
-              onChange={(e) => setUrl(e.target.value)}
-              onKeyDown={(e) => e.key === "Enter" && handleGenerate()}
-              placeholder="https://github.com/owner/repo"
-              style={{
-                width: "340px",
-                padding: "10px 14px",
-                borderRadius: "8px",
-                border: "1px solid #004346",
-                background: "rgba(4, 8, 16, 0.8)",
-                color: "#01949A",
-                fontSize: "14px",
-                outline: "none",
-                backdropFilter: "blur(8px)",
-              }}
-            />
-            <button
-              onClick={handleGenerate}
-              disabled={loading}
-              style={{
-                padding: "10px 20px",
-                borderRadius: "8px",
-                border: "1px solid #01949A",
-                background: loading
-                  ? "rgba(1, 148, 154, 0.1)"
-                  : "rgba(1, 148, 154, 0.2)",
-                color: "#01949A",
-                fontSize: "14px",
-                cursor: loading ? "not-allowed" : "pointer",
-              }}
-            >
-              {loading ? "Building..." : "Generate City"}
-            </button>
-          </div>
-        )}
+        {/* The secondary input UI has been removed. Users can click the CITY_OF_CODE logo to return to the homepage to generate a new city. */}
 
 
 
@@ -381,6 +331,7 @@ export default function Home() {
               antialias: true,
               toneMapping: THREE.ACESFilmicToneMapping,
               powerPreference: "high-performance",
+              stencil: true,
             }}
           >
             <ambientLight intensity={1.2} color="#1a0033" />

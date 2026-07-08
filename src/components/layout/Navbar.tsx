@@ -37,27 +37,40 @@ export default function Navbar() {
   const [logoHovered, setLogoHovered] = useState(false);
 
   const navLinks = [
-    { name: "[HOME]", path: "/" },
-    { name: "[ABOUT]", path: "/about" },
-    { name: "[DOCS]", path: "/docs" },
+    { name: "HOME", path: "/" },
+    { name: "ABOUT", path: "/about" },
+    { name: "DOCS", path: "/docs" },
   ];
 
   return (
-    <nav
+    <div
       style={{
         position: "fixed",
-        top: 0,
-        left: 0,
-        width: "100%",
-        padding: "16px 32px",
-        display: "flex",
-        justifyContent: "space-between",
-        alignItems: "center",
+        top: "24px",
+        left: "50%",
+        transform: "translateX(-50%)",
+        width: "calc(100% - 64px)",
+        maxWidth: "1200px",
         zIndex: 50,
-        background: "linear-gradient(to bottom, rgba(4, 8, 16, 0.9) 0%, rgba(4, 8, 16, 0) 100%)",
-        borderBottom: "1px solid rgba(0, 139, 139, 0.3)",
       }}
     >
+      <div className="rainbow-border-wrap" style={{ background: "transparent" }}>
+        <div className="border-spinner"></div>
+        <nav
+          style={{
+            position: "relative",
+            zIndex: 1,
+            display: "flex",
+            justifyContent: "space-between",
+            alignItems: "center",
+            padding: "16px 32px",
+            background: "rgba(0, 0, 0, 0.1)",
+            backdropFilter: "blur(4px)",
+            WebkitBackdropFilter: "blur(4px)",
+            borderRadius: "12px",
+            boxShadow: "inset 0 0 10px rgba(255, 255, 255, 0.05)",
+          }}
+        >
       {/* Logo */}
       <a
         href="/"
@@ -107,6 +120,8 @@ export default function Navbar() {
           </Link>
         ))}
       </div>
-    </nav>
+        </nav>
+      </div>
+    </div>
   );
 }

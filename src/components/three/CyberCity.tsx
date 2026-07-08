@@ -85,7 +85,7 @@ function Starfield() {
   // Cross/sparkle star positions (4-pointed stars like in the reference images)
   const sparklePositions = useMemo(() => {
     const pos = [];
-    const count = 12;
+    const count = 15;
     for (let i = 0; i < count; i++) {
       pos.push({
         x: (Math.random() - 0.5) * 350,
@@ -96,6 +96,30 @@ function Starfield() {
     return pos;
   }, []);
 
+  const mat1Ref = useRef<THREE.PointsMaterial>(null);
+  const mat2Ref = useRef<THREE.PointsMaterial>(null);
+  const sparkleGroupRef = useRef<THREE.Group>(null);
+
+  useFrame((state) => {
+    const t = state.clock.getElapsedTime();
+    if (mat1Ref.current) {
+      // gentle slow twinkle for background
+      mat1Ref.current.opacity = 0.5 + Math.sin(t * 1.5) * 0.25;
+    }
+    if (mat2Ref.current) {
+      // faster, brighter twinkle for foreground
+      mat2Ref.current.opacity = 0.7 + Math.sin(t * 3.2) * 0.3;
+      mat2Ref.current.size = 0.4 + Math.sin(t * 2.5) * 0.1;
+    }
+    if (sparkleGroupRef.current) {
+      sparkleGroupRef.current.children.forEach((child, i) => {
+        // Individual fast blinking and scaling for sparkles
+        const scale = 1.0 + Math.sin(t * 6.0 + i * 2.1) * 0.6;
+        child.scale.setScalar(scale);
+      });
+    }
+  });
+
   return (
     <group position={[0, 0, -20]}>
       {/* Background stars – cool blue-violet tint */}
@@ -103,22 +127,24 @@ function Starfield() {
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions1, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#ccaaff" size={0.12} sizeAttenuation={true} transparent opacity={0.55} />
+        <pointsMaterial ref={mat1Ref} color="#ccaaff" size={0.15} sizeAttenuation={true} transparent opacity={0.6} />
       </points>
       {/* Foreground stars – bright white with slight warmth */}
       <points>
         <bufferGeometry>
           <bufferAttribute attach="attributes-position" args={[positions2, 3]} />
         </bufferGeometry>
-        <pointsMaterial color="#eeddff" size={0.3} sizeAttenuation={true} transparent opacity={0.95} />
+        <pointsMaterial ref={mat2Ref} color="#ffffff" size={0.4} sizeAttenuation={true} transparent opacity={1.0} />
       </points>
       {/* Sparkle cross-stars (bright accent points) */}
-      {sparklePositions.map((s, i) => (
-        <mesh key={i} position={[s.x, s.y, s.z]}>
-          <sphereGeometry args={[0.4, 4, 4]} />
-          <meshBasicMaterial color="#ffffff" toneMapped={false} />
-        </mesh>
-      ))}
+      <group ref={sparkleGroupRef}>
+        {sparklePositions.map((s, i) => (
+          <mesh key={i} position={[s.x, s.y, s.z]}>
+            <sphereGeometry args={[0.5, 4, 4]} />
+            <meshBasicMaterial color="#ffffff" toneMapped={false} transparent opacity={0.9} />
+          </mesh>
+        ))}
+      </group>
     </group>
   );
 }
