@@ -51,11 +51,15 @@ export default function CityClouds({ gridSize }: { gridSize: number }) {
     const time = clock.elapsedTime;
     
     particles.forEach((p, i) => {
-      // Slow organic drifting
-      const driftX = p.x + Math.sin(time * p.speed + p.offset) * 8;
-      const driftZ = p.z + Math.cos(time * p.speed + p.offset) * 8;
+      // Continuous movement across the grid
+      const speedMultiplier = 20;
+      const driftZ = p.z + time * p.speed * speedMultiplier;
+      const driftX = p.x + Math.sin(time * p.speed * 2 + p.offset) * 15;
       
-      dummy.position.set(driftX, p.y, driftZ);
+      // Wrap around grid boundaries
+      const wrapZ = ((driftZ + gridSize * 1.5) % (gridSize * 3)) - gridSize * 1.5;
+      
+      dummy.position.set(driftX, p.y, wrapZ);
       
       // Billboarding: always face the camera
       dummy.lookAt(camera.position);

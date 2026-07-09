@@ -40,11 +40,12 @@ body {
   -webkit-text-fill-color: #00ffff;
 }
 
+h1 {
+}
+
 h1 .hover-char {
-  background: linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088);
-  -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 2.5px #ff8800;
+  -webkit-text-stroke: 1px rgba(255, 255, 255, 0.15);
 }
 
 .hover-char:hover {
@@ -56,8 +57,10 @@ h1 .hover-char {
 }
 
 h1 .hover-char:hover {
-  -webkit-text-stroke: 2.5px #ff0088;
+  background: none;
+  -webkit-text-stroke: 1px #ffff66;
   transform: translateY(-4px);
+  filter: drop-shadow(0 0 15px rgba(255, 255, 102, 0.8));
 }
 
 .description-container .hover-char:hover {
@@ -122,4 +125,173 @@ h1 .hover-char:hover {
 @keyframes spin {
   0% { transform: rotate(0deg); }
   100% { transform: rotate(360deg); }
+}
+
+.data-rain-heading {
+  font-size: 7rem !important;
+  font-weight: 900;
+  margin: 0 0 32px 0;
+  letter-spacing: 2px;
+  position: relative;
+  text-transform: uppercase;
+  background-image: 
+    linear-gradient(rgba(0, 255, 255, 0.2) 2px, transparent 2px),
+    linear-gradient(90deg, rgba(0, 255, 255, 0.2) 2px, transparent 2px),
+    repeating-linear-gradient(180deg, rgba(0, 255, 255, 0) 0%, #00ffff 50%, rgba(0, 255, 255, 0) 100%),
+    repeating-linear-gradient(180deg, rgba(255, 0, 170, 0) 0%, #ff00aa 50%, rgba(255, 0, 170, 0) 100%);
+  background-size: 30px 30px, 30px 30px, 100% 200%, 100% 150%;
+  background-position: 0 0, 0 0, 0 0, 0 0;
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  animation: dataRain 3s linear infinite;
+  -webkit-text-stroke: 1px rgba(0, 255, 255, 0.8);
+}
+
+.data-rain-heading::after {
+  content: attr(data-text);
+  position: absolute;
+  left: 0;
+  top: 0;
+  z-index: -1;
+  background: transparent;
+  -webkit-text-stroke: 4px #00ffff;
+  filter: blur(25px);
+  opacity: 0.8;
+}
+
+@keyframes dataRain {
+  0% {
+    background-position: 0 0, 0 0, 0 -200%, 0 -150%;
+  }
+  100% {
+  }
+}
+
+/* iOS Liquid Glass */
+.liquid-glass {
+  position: relative;
+  border-radius: 28px;
+  /* Semi-transparent dark glass — lets the scene peek through subtly */
+  background:
+    /* Soft frosted color blobs — simulates blurred background light refracting through glass */
+    radial-gradient(ellipse 120% 80% at 30% 20%, rgba(160, 100, 255, 0.18) 0%, transparent 50%),
+    radial-gradient(ellipse 100% 100% at 70% 80%, rgba(60, 120, 255, 0.12) 0%, transparent 50%),
+    radial-gradient(ellipse 80% 60% at 80% 20%, rgba(255, 140, 60, 0.08) 0%, transparent 40%),
+    radial-gradient(ellipse 100% 80% at 50% 50%, rgba(120, 80, 200, 0.1) 0%, transparent 60%),
+    /* Base translucent dark glass */
+    linear-gradient(135deg, rgba(30, 15, 60, 0.75) 0%, rgba(15, 20, 50, 0.7) 50%, rgba(25, 10, 55, 0.75) 100%);
+  backdrop-filter: blur(40px) saturate(200%);
+  -webkit-backdrop-filter: blur(40px) saturate(200%);
+  border: none;
+  overflow: hidden;
+  /* Chromatic aberration — offset RGB color shadows to simulate glass edge refraction */
+  box-shadow:
+    /* Outer chromatic split */
+    -2px -1px 0px rgba(255, 60, 20, 0.2),
+    2px 1px 0px rgba(20, 80, 255, 0.2),
+    0px -1px 0px rgba(255, 220, 60, 0.15),
+    0px 2px 0px rgba(100, 0, 255, 0.15),
+    /* Soft glow */
+    0 0 80px rgba(120, 60, 220, 0.15),
+    0 0 40px rgba(60, 100, 255, 0.08),
+    0 30px 80px rgba(0, 0, 0, 0.5),
+    /* Inner glass edge light */
+    inset 0 1px 1px rgba(255, 255, 255, 0.2),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Chromatic gradient border — like light splitting through a glass prism */
+.liquid-glass::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1.2px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 80, 20, 0.6) 0%,
+    rgba(255, 200, 60, 0.5) 12%,
+    rgba(200, 255, 100, 0.3) 24%,
+    rgba(255, 255, 255, 0.6) 36%,
+    rgba(150, 200, 255, 0.4) 50%,
+    rgba(80, 120, 255, 0.5) 64%,
+    rgba(160, 60, 255, 0.5) 78%,
+    rgba(255, 60, 120, 0.4) 90%,
+    rgba(255, 80, 20, 0.5) 100%
+  );
+  -webkit-mask:
+    linear-gradient(#fff 0 0) content-box,
+    linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+
+/* Specular highlight — curved glass catching light from above */
+.liquid-glass::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    /* Top specular arc — bright light hitting the top of curved glass */
+    radial-gradient(ellipse 70% 20% at 50% 0%, rgba(255, 255, 255, 0.12) 0%, transparent 100%),
+    /* Bottom subtle reflection */
+    radial-gradient(ellipse 60% 15% at 50% 100%, rgba(200, 180, 255, 0.06) 0%, transparent 100%),
+    /* Warm corner refraction */
+    radial-gradient(ellipse at 0% 0%, rgba(255, 180, 80, 0.06) 0%, transparent 30%),
+    /* Cool corner refraction */
+    radial-gradient(ellipse at 100% 100%, rgba(80, 140, 255, 0.06) 0%, transparent 30%);
+  pointer-events: none;
+  z-index: 1;
+}
+
+/* Liquid Glass Button variant (scaled down shadows and edges) */
+.liquid-glass-btn {
+  position: relative;
+  background:
+    radial-gradient(ellipse 120% 80% at 30% 20%, rgba(160, 100, 255, 0.25) 0%, transparent 60%),
+    radial-gradient(ellipse 100% 100% at 70% 80%, rgba(60, 120, 255, 0.15) 0%, transparent 60%),
+    linear-gradient(135deg, rgba(30, 15, 60, 0.6) 0%, rgba(15, 20, 50, 0.5) 50%, rgba(25, 10, 55, 0.6) 100%);
+  backdrop-filter: blur(20px) saturate(150%);
+  -webkit-backdrop-filter: blur(20px) saturate(150%);
+  border: none;
+  overflow: hidden;
+  box-shadow:
+    -1px -1px 0px rgba(255, 60, 20, 0.2),
+    1px 1px 0px rgba(20, 80, 255, 0.2),
+    0 0 15px rgba(120, 60, 220, 0.3),
+    inset 0 1px 1px rgba(255, 255, 255, 0.3),
+    inset 0 -1px 1px rgba(255, 255, 255, 0.1);
+}
+
+.liquid-glass-btn::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  padding: 1px;
+  background: linear-gradient(
+    160deg,
+    rgba(255, 80, 20, 0.7) 0%,
+    rgba(255, 255, 255, 0.8) 36%,
+    rgba(80, 120, 255, 0.6) 64%,
+    rgba(255, 80, 20, 0.6) 100%
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  pointer-events: none;
+  z-index: 3;
+}
+
+.liquid-glass-btn::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: radial-gradient(ellipse 80% 30% at 50% 0%, rgba(255, 255, 255, 0.15) 0%, transparent 100%);
+  pointer-events: none;
+  z-index: 1;
 }

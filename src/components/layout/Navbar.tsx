@@ -1,8 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useCallback } from "react";
+import { motion, AnimatePresence } from "framer-motion";
 
 function SunLogo({ isHovered }: { isHovered: boolean }) {
   return (
@@ -35,6 +35,21 @@ function SunLogo({ isHovered }: { isHovered: boolean }) {
 export default function Navbar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [logoHovered, setLogoHovered] = useState(false);
+  const [hidden, setHidden] = useState(false);
+
+  useEffect(() => {
+    // Listen for scroll on any scrollable container inside the page
+    const handleScroll = (e: Event) => {
+      const target = e.target as HTMLElement;
+      if (target && target.scrollTop !== undefined) {
+        setHidden(target.scrollTop > 100);
+      }
+    };
+
+    // Use capture phase to catch scroll events from any nested scrollable div
+    document.addEventListener("scroll", handleScroll, true);
+    return () => document.removeEventListener("scroll", handleScroll, true);
+  }, []);
 
   const navLinks = [
     { name: "HOME", path: "/" },
@@ -43,19 +58,25 @@ export default function Navbar() {
   ];
 
   return (
-    <div
-      style={{
-        position: "fixed",
-        top: "24px",
-        left: "50%",
-        transform: "translateX(-50%)",
-        width: "calc(100% - 64px)",
-        maxWidth: "1200px",
-        zIndex: 50,
-      }}
-    >
-      <div className="rainbow-border-wrap" style={{ background: "transparent" }}>
-        <div className="border-spinner"></div>
+    <AnimatePresence>
+      {!hidden && (
+        <motion.div
+          initial={{ opacity: 0, y: -30 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -30 }}
+          transition={{ duration: 0.3, ease: "easeInOut" }}
+          style={{
+            position: "fixed",
+            top: "24px",
+            left: 0,
+            right: 0,
+            width: "calc(100% - 64px)",
+            maxWidth: "1200px",
+            margin: "0 auto",
+            zIndex: 50,
+          }}
+        >
+      <div className="liquid-glass">
         <nav
           style={{
             position: "relative",
@@ -64,11 +85,6 @@ export default function Navbar() {
             justifyContent: "space-between",
             alignItems: "center",
             padding: "16px 32px",
-            background: "rgba(0, 0, 0, 0.1)",
-            backdropFilter: "blur(4px)",
-            WebkitBackdropFilter: "blur(4px)",
-            borderRadius: "12px",
-            boxShadow: "inset 0 0 10px rgba(255, 255, 255, 0.05)",
           }}
         >
       {/* Logo */}
@@ -89,7 +105,7 @@ export default function Navbar() {
             fontSize: "1.5rem",
             fontWeight: "bold",
             letterSpacing: "2px",
-            background: "linear-gradient(to bottom, #ffcc00, #ff6600, #ff0088)",
+            background: "linear-gradient(to right, #F5D76E, #59ABE3, #F1828D)",
             WebkitBackgroundClip: "text",
             WebkitTextFillColor: "transparent",
             filter: logoHovered ? "brightness(1.5) drop-shadow(0 0 10px rgba(255, 0, 136, 0.8))" : "none",
@@ -100,28 +116,67 @@ export default function Navbar() {
         </span>
       </a>
 
-      {/* Links */}
-      <div style={{ display: "flex", gap: "32px" }}>
-        {navLinks.map((link) => (
+      {/* Right Side Links & Auth */}
+      <div style={{ display: "flex", alignItems: "center", gap: "32px" }}>
+        {/* Main Links */}
+        <div style={{ display: "flex", gap: "32px" }}>
+          {navLinks.map((link) => (
+            <Link
+              key={link.name}
+              href={link.path}
+              onMouseEnter={() => setHovered(link.name)}
+              onMouseLeave={() => setHovered(null)}
+              style={{
+                color: hovered === link.name ? "#ff00aa" : "#008b8b",
+                textDecoration: "none",
+                fontSize: "1.1rem",
+                transition: "all 0.2s ease",
+                textShadow: hovered === link.name ? "0 0 8px rgba(255, 0, 170, 0.6)" : "none",
+              }}
+            >
+              {link.name}
+            </Link>
+          ))}
+        </div>
+
+        {/* Auth Links */}
+        <div style={{ display: "flex", gap: "20px", alignItems: "center", borderLeft: "1px solid rgba(255, 255, 255, 0.1)", paddingLeft: "32px" }}>
           <Link
-            key={link.name}
-            href={link.path}
-            onMouseEnter={() => setHovered(link.name)}
+            href="/login"
+            onMouseEnter={() => setHovered("LOGIN")}
             onMouseLeave={() => setHovered(null)}
             style={{
-              color: hovered === link.name ? "#ff00aa" : "#008b8b",
+              color: hovered === "LOGIN" ? "#fff" : "#ffcc00",
               textDecoration: "none",
-              fontSize: "1.1rem",
+              fontSize: "1.05rem",
+              fontWeight: "bold",
               transition: "all 0.2s ease",
-              textShadow: hovered === link.name ? "0 0 8px rgba(255, 0, 170, 0.6)" : "none",
+              textShadow: hovered === "LOGIN" ? "0 0 8px rgba(255, 204, 0, 0.8)" : "none",
             }}
           >
-            {link.name}
+            LOGIN
           </Link>
-        ))}
+          <Link
+            href="/signup"
+            onMouseEnter={() => setHovered("SIGNUP")}
+            onMouseLeave={() => setHovered(null)}
+            style={{
+              color: hovered === "SIGNUP" ? "#fff" : "#ff00aa",
+              textDecoration: "none",
+              fontSize: "1.05rem",
+              fontWeight: "bold",
+              transition: "all 0.2s ease",
+              textShadow: hovered === "SIGNUP" ? "0 0 8px rgba(255, 0, 170, 0.8)" : "none",
+            }}
+          >
+            SIGN UP
+          </Link>
+        </div>
       </div>
         </nav>
       </div>
-    </div>
+        </motion.div>
+      )}
+    </AnimatePresence>
   );
 }

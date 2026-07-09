@@ -97,13 +97,13 @@ const CircuitGridShader = {
       float centerFade = smoothstep(80.0, 40.0, distToCenter);
       
       float distToPointer = distance(vWorldPos.xz, uPointer);
-      float pointerFade = smoothstep(15.0, 0.0, distToPointer) * 8.0; // Larger, brighter spotlight
+      float pointerFade = smoothstep(15.0, 0.0, distToPointer) * 4.0; 
       
-      // Decrease base fade so grid is a little faded (as requested), but gets extremely bright on hover
-      float baseFade = mix(centerFade, centerFade * 0.15 + pointerFade, uIsHomepage);
+      // Keep the grid very bright everywhere, add extra brightness on pointer hover
+      float baseFade = centerFade * 0.8 + pointerFade;
 
-      // Base lines intensity
-      float lineIntensity = max(majorGrid * 1.5, minorGrid * 2.5);
+      // Base lines intensity heavily boosted for visibility
+      float lineIntensity = max(majorGrid * 4.0, minorGrid * 5.0);
       
       float finalAlpha = lineIntensity * camFade * baseFade;
       if (finalAlpha < 0.01) discard;
