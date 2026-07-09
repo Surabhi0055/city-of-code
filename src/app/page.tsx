@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from "react";
 import * as THREE from "three";
-import { Canvas } from "@react-three/fiber";
+import { Canvas, useFrame } from "@react-three/fiber";
 import { motion, AnimatePresence } from "framer-motion";
 import { LoadingOverlay } from "@/components/ui/LoadingOverlay";
 import GradualBlur from "@/components/ui/GradualBlur";
@@ -11,9 +11,66 @@ import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import InfoPanel from "@/components/three/InfoPanel";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
-
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
-import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
+
+function ScrollCamera({ scrollY, maxScroll, isHomepage }: { scrollY: number; maxScroll: number; isHomepage: boolean }) {
+  useFrame((state) => {
+    if (!isHomepage) return; // Only fly through on the homepage
+
+    const mScroll = Math.max(maxScroll, 1);
+    const progress = Math.min(scrollY / mScroll, 1.0);
+    
+    // Smoothly interpolate camera position deeper into the neon city
+    // Starts at z=40, flies over the city to z=-20
+    const targetZ = THREE.MathUtils.lerp(40, -10, progress);
+    
+    // Starts high (y=8), rises up slightly to look over buildings (y=15)
+    const targetY = THREE.MathUtils.lerp(8, 20, progress);
+    
+    state.camera.position.lerp(new THREE.Vector3(0, targetY, targetZ), 0.05);
+    
+    // Keep the camera pointing far into the horizon towards the synthwave sun
+    state.camera.lookAt(0, 5, -120);
+  });
+  return null;
+}
+
+const LegendCard = ({ color, title, subtitle, icon }: { color: string, title: string, subtitle: string, icon?: React.ReactNode }) => {
+  return (
+    <div className="liquid-glass" style={{
+      padding: "20px",
+      display: "flex",
+      alignItems: "center",
+      gap: "20px",
+      background: "rgba(255,255,255,0.03)",
+      border: `1px solid ${color}40`,
+      borderRadius: "16px",
+      boxShadow: `0 4px 30px ${color}15`
+    }}>
+       <div style={{
+         width: "60px", height: "60px", borderRadius: "12px", flexShrink: 0,
+         background: `linear-gradient(135deg, ${color}, transparent)`,
+         boxShadow: `0 0 20px ${color}50`,
+         border: `1px solid ${color}80`,
+         display: "flex", alignItems: "center", justifyContent: "center",
+         color: "#fff", fontSize: "1.2rem", fontWeight: "bold", fontFamily: "monospace"
+       }}>
+         {icon}
+       </div>
+       <div>
+         <h4 style={{ color: "#fff", fontSize: "1.1rem", fontWeight: "bold", marginBottom: "4px" }}>{title}</h4>
+         <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "0.9rem", margin: 0 }}>{subtitle}</p>
+       </div>
+    </div>
+  );
+}
+
+const IconCode = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="16 18 22 12 16 6"></polyline><polyline points="8 6 2 12 8 18"></polyline></svg>;
+const IconLayout = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="18" height="18" rx="2" ry="2"></rect><line x1="3" y1="9" x2="21" y2="9"></line><line x1="9" y1="21" x2="9" y2="9"></line></svg>;
+const IconDatabase = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"></ellipse><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"></path><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"></path></svg>;
+const IconFileText = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
+const IconArrowUpDown = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="8 9 12 5 16 9"></polyline><polyline points="16 15 12 19 8 15"></polyline><line x1="12" y1="5" x2="12" y2="19"></line></svg>;
+const IconGrid = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -34,6 +91,7 @@ export default function Home() {
 
   // Track scroll position for the homepage background parallax
   const [scrollY, setScrollY] = useState(0);
+  const [maxScroll, setMaxScroll] = useState(1500);
 
   async function handleGenerate() {
     const parsed = parseGitHubUrl(url);
@@ -152,7 +210,11 @@ export default function Home() {
               }}
             >
               <div 
-                onScroll={(e) => setScrollY(e.currentTarget.scrollTop)}
+                onScroll={(e) => {
+                  const target = e.currentTarget;
+                  setScrollY(target.scrollTop);
+                  setMaxScroll(target.scrollHeight - target.clientHeight);
+                }}
                 style={{ 
                   height: "100%", 
                   overflowY: "auto", 
@@ -327,43 +389,194 @@ export default function Home() {
                     letterSpacing: "2px",
                     textShadow: "0 0 15px rgba(255, 255, 255, 0.4)",
                     textAlign: "center",
-                    marginBottom: "20px"
+                    marginBottom: "20px",
+                    position: "relative",
+                    zIndex: 10
                   }}>
                     How it Works
                   </h2>
+                  
                   {[
                     { title: "Fetch & Parse", desc: "Provide a GitHub link. We thoroughly analyze your repository's structure, rendering every single file and tracking its complex dependencies." },
                     { title: "City Planning", desc: "Folders organically grow into districts. Files reach towards the sky as buildings. The height of a building visualizes its complexity, while its vibrant color represents the programming language." },
                     { title: "AI Code Architect", desc: "Click on any building within the city to get an instant, AI-generated architectural breakdown explaining exactly how that specific file fits into your broader codebase." }
-                  ].map((step, i) => (
-                    <div key={i} style={{
-                      display: "flex",
-                      justifyContent: i % 2 === 0 ? "flex-start" : "flex-end",
-                      textAlign: i % 2 === 0 ? "left" : "right"
-                    }}>
-                      <div className="liquid-glass" style={{
-                        padding: "40px",
-                        maxWidth: "600px",
+                  ].map((step, i) => {
+                    const blobColors = [
+                      "radial-gradient(circle at center, rgba(89,171,227,0.4) 0%, rgba(89,171,227,0.15) 40%, rgba(0,0,0,0) 70%)",
+                      "radial-gradient(circle at center, rgba(245,215,110,0.3) 0%, rgba(245,215,110,0.1) 40%, rgba(0,0,0,0) 70%)",
+                      "radial-gradient(circle at center, rgba(245,215,110,0.35) 0%, rgba(241,130,141,0.15) 40%, rgba(0,0,0,0) 70%)"
+                    ];
+                    return (
+                      <div key={i} style={{
                         display: "flex",
-                        flexDirection: "column",
-                        alignItems: i % 2 === 0 ? "flex-start" : "flex-end"
+                        justifyContent: "space-between",
+                        alignItems: "center",
+                        flexDirection: i % 2 === 0 ? "row" : "row-reverse",
+                        textAlign: i % 2 === 0 ? "left" : "right",
+                        position: "relative",
+                        zIndex: 10,
+                        gap: "40px"
                       }}>
-                        <h3 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "16px" }}>
-                          <GradientText
-                            colors={["#F5D76E", "#59ABE3", "#F1828D"]}
-                            animationSpeed={4}
-                            showBorder={false}
-                            direction="horizontal"
-                          >
-                            {step.title}
-                          </GradientText>
-                        </h3>
-                        <p style={{ color: "#fff", lineHeight: "1.8", fontSize: "1.1rem" }}>
-                          {step.desc}
-                        </p>
+                        {/* Text Card */}
+                        <div className="liquid-glass" style={{
+                          padding: "40px",
+                          maxWidth: "600px",
+                          flex: "1",
+                          display: "flex",
+                          flexDirection: "column",
+                          alignItems: i % 2 === 0 ? "flex-start" : "flex-end",
+                          zIndex: 2
+                        }}>
+                          <h3 style={{ fontSize: "2rem", fontWeight: "bold", marginBottom: "16px" }}>
+                            <GradientText
+                              colors={["#F5D76E", "#59ABE3", "#F1828D"]}
+                              animationSpeed={4}
+                              showBorder={false}
+                              direction="horizontal"
+                            >
+                              {step.title}
+                            </GradientText>
+                          </h3>
+                          <p style={{ color: "#fff", lineHeight: "1.8", fontSize: "1.1rem" }}>
+                            {step.desc}
+                          </p>
+                        </div>
+                        
+                        {/* Blurred Color Orb Beside Card bleeding off the edge */}
+                        <div style={{
+                          flex: "1",
+                          position: "relative"
+                        }}>
+                          <div style={{
+                            position: "absolute",
+                            top: "50%",
+                            transform: "translateY(-50%)",
+                            [i % 2 === 0 ? "right" : "left"]: "-20%",
+                            width: "500px",
+                            height: "500px",
+                            borderRadius: "50%",
+                            background: blobColors[i],
+                            filter: "blur(70px)",
+                            zIndex: -1,
+                            pointerEvents: "none"
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {/* The City Legend (Visual Map Key) */}
+                <div style={{
+                  marginTop: "15vh",
+                  marginBottom: "20vh",
+                  padding: "0 2vw",
+                  display: "flex",
+                  flexDirection: "column",
+                  gap: "80px",
+                  position: "relative",
+                  zIndex: 10
+                }}>
+                  
+                  {/* Top Split: Title and Structural Cards */}
+                  <div style={{ display: "flex", flexWrap: "wrap", gap: "60px", alignItems: "center" }}>
+                    
+                    {/* Left side text */}
+                    <div style={{ flex: "1 1 400px" }}>
+                      <h2 style={{
+                        fontSize: "2.5rem",
+                        fontWeight: "bold",
+                        marginBottom: "24px",
+                        textTransform: "uppercase",
+                        letterSpacing: "2px"
+                      }}>
+                        <GradientText
+                          colors={["#F5D76E", "#59ABE3", "#F1828D"]}
+                          animationSpeed={4}
+                          showBorder={false}
+                          direction="horizontal"
+                        >
+                          The City Legend
+                        </GradientText>
+                      </h2>
+                      <p style={{ color: "rgba(255,255,255,0.8)", fontSize: "1.1rem", lineHeight: 1.8 }}>
+                        Every element in the generated city represents a specific aspect of your codebase. 
+                        The visual language helps you immediately grasp architecture and complexity at a glance.
+                      </p>
+                    </div>
+
+                    {/* Right side: Structural Cards */}
+                    <div style={{ 
+                      flex: "1.5 1 500px", 
+                      display: "flex", 
+                      flexDirection: "column",
+                      gap: "40px" 
+                    }}>
+                      {/* Building Shapes Row */}
+                      <div>
+                        <h3 style={{ color: "#fff", marginBottom: "16px", fontSize: "1.2rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.9 }}>Building Shapes (File Types)</h3>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                          <LegendCard color="#F5D76E" icon={IconCode} title="Tall Towers" subtitle="Logic (.js, .ts, .py, .cpp...)" />
+                          <LegendCard color="#59ABE3" icon={IconLayout} title="Wide Slabs" subtitle="Styling (.css, .html...)" />
+                          <LegendCard color="#F1828D" icon={IconDatabase} title="Solid Blocks" subtitle="Configs (.json, .yml...)" />
+                          <LegendCard color="#7bed9f" icon={IconFileText} title="Sharp Spires" subtitle="Docs (.md, .txt...)" />
+                        </div>
+                      </div>
+
+                      {/* Metrics Row */}
+                      <div>
+                        <h3 style={{ color: "#fff", marginBottom: "16px", fontSize: "1.2rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "1px", opacity: 0.9 }}>Visual Metrics</h3>
+                        <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "20px" }}>
+                          <LegendCard color="#ffffff" icon={IconArrowUpDown} title="Building Height" subtitle="File Size / Complexity" />
+                          <LegendCard color="#a29bfe" icon={IconGrid} title="The City Grid" subtitle="Entire Repository" />
+                        </div>
                       </div>
                     </div>
-                  ))}
+                  </div>
+
+                  {/* Bottom Full Width: District Colors */}
+                  <div className="liquid-glass" style={{
+                    padding: "40px",
+                    borderRadius: "24px",
+                    background: "rgba(255,255,255,0.03)",
+                    border: "1px solid rgba(255,255,255,0.15)",
+                    boxShadow: "0 4px 30px rgba(0,0,0,0.5)"
+                  }}>
+                    <h3 style={{ marginBottom: "16px", fontSize: "1.8rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
+                      <GradientText
+                        colors={["#F5D76E", "#59ABE3", "#F1828D"]}
+                        animationSpeed={4}
+                        showBorder={false}
+                        direction="horizontal"
+                      >
+                        District Colors (Folders)
+                      </GradientText>
+                    </h3>
+                    <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.95rem", marginBottom: "30px", lineHeight: 1.5, maxWidth: "800px" }}>
+                      The largest folders in your repository are assigned distinct neon colors. Every building (file) within that folder shares its district's color, grouping related code visually.
+                    </p>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
+                      {[
+                        { c: "#00ffff", l: "src/" }, { c: "#2563eb", l: "components/" },
+                        { c: "#d946ef", l: "lib/" }, { c: "#38bdf8", l: "api/" },
+                        { c: "#f472b6", l: "public/" }, { c: "#4338ca", l: "styles/" },
+                        { c: "#9333ea", l: "utils/" }, { c: "#e11d48", l: "assets/" }
+                      ].map((swatch, idx) => (
+                        <div key={idx} style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: "12px" }}>
+                          <motion.div 
+                            whileHover={{ scale: 1.3 }}
+                            style={{ 
+                              width: "50px", height: "50px", borderRadius: "12px", 
+                              background: swatch.c, 
+                              boxShadow: `0 0 20px ${swatch.c}80`, 
+                              border: `1px solid ${swatch.c}`, cursor: "pointer" 
+                            }} 
+                          />
+                          <span style={{ color: "rgba(255,255,255,0.8)", fontSize: "0.9rem", fontFamily: "monospace" }}>{swatch.l}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               </div>
 
@@ -413,7 +626,6 @@ export default function Home() {
           inset: 0,
           zIndex: 0,
           filter: !repoInfo ? "brightness(0.65)" : "none",
-          transform: !repoInfo ? `translateY(-${scrollY * 0.8}px)` : "none",
           transition: !repoInfo ? "none" : "filter 1s ease",
         }}>
           <Canvas
@@ -425,6 +637,7 @@ export default function Home() {
               stencil: true,
             }}
           >
+            <ScrollCamera scrollY={scrollY} maxScroll={maxScroll} isHomepage={!repoInfo} />
             <ambientLight intensity={1.2} color="#1a0033" />
             <pointLight position={[0,  80, 0]}    color="#aa00ff" intensity={3}   distance={400} />
             <pointLight position={[80, 50, 80]}   color="#ff00cc" intensity={2}   distance={300} />

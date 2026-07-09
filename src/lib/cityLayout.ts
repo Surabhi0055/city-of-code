@@ -44,8 +44,8 @@ function getBuildingType(size: number, fileName: string): BuildingData["building
   if ([".md", ".txt"].includes(ext)) return "spire";
   if ([".json", ".yml", ".yaml", ".env"].includes(ext)) return "block";
   if ([".css", ".scss", ".html"].includes(ext)) return "slab";
-  if (size > 10000 && [".ts", ".tsx", ".js", ".jsx"].includes(ext)) return "tower";
-  return "residential"; // Default fallback
+  if ([".ts", ".tsx", ".js", ".jsx", ".py", ".cpp", ".c", ".java", ".go", ".rs"].includes(ext)) return "tower";
+  return "residential"; // Default fallback (Misc files)
 }
 
 function seededRandom(seed: number) {
