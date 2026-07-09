@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
+import { useSession, signOut } from "next-auth/react";
 
 function SunLogo({ isHovered }: { isHovered: boolean }) {
   return (
@@ -36,6 +37,7 @@ export default function Navbar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [logoHovered, setLogoHovered] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const { data: session } = useSession();
 
   useEffect(() => {
     // Listen for scroll on any scrollable container inside the page
@@ -141,40 +143,72 @@ export default function Navbar() {
 
         {/* Auth Links */}
         <div style={{ display: "flex", gap: "20px", alignItems: "center", borderLeft: "1px solid rgba(255, 255, 255, 0.1)", paddingLeft: "32px" }}>
-          <Link
-            href="/login"
-            onMouseEnter={() => setHovered("LOGIN")}
-            onMouseLeave={() => setHovered(null)}
-            style={{
-              color: hovered === "LOGIN" ? "#fff" : "#ffcc00",
-              textDecoration: "none",
-              fontSize: "1.05rem",
-              fontWeight: "bold",
-              transition: "all 0.2s ease",
-              textShadow: hovered === "LOGIN" ? "0 0 8px rgba(255, 204, 0, 0.8)" : "none",
-            }}
-          >
-            LOGIN
-          </Link>
-          <Link
-            href="/signup"
-            onMouseEnter={() => setHovered("SIGNUP")}
-            onMouseLeave={() => setHovered(null)}
-            style={{
-              textDecoration: "none",
-              fontSize: "1.05rem",
-              fontWeight: "bold",
-              transition: "all 0.2s ease",
-              display: "inline-block",
-              background: "linear-gradient(90deg, #F5D76E, #59ABE3, #F1828D)",
-              WebkitBackgroundClip: "text",
-              WebkitTextFillColor: "transparent",
-              filter: hovered === "SIGNUP" ? "brightness(1.2) drop-shadow(0 0 8px rgba(241, 130, 141, 0.6))" : "none",
-              transform: hovered === "SIGNUP" ? "scale(1.1)" : "scale(1)",
-            }}
-          >
-            SIGN UP
-          </Link>
+          {session ? (
+            <>
+              {session.user?.image ? (
+                <img src={session.user.image} alt="Avatar" style={{ width: "32px", height: "32px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)" }} />
+              ) : (
+                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(90deg, #F5D76E, #F1828D)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "bold" }}>
+                  {session.user?.name?.charAt(0) || "U"}
+                </div>
+              )}
+              <button
+                onClick={() => signOut()}
+                onMouseEnter={() => setHovered("LOGOUT")}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  background: "transparent",
+                  border: "none",
+                  cursor: "pointer",
+                  color: hovered === "LOGOUT" ? "#fff" : "rgba(255,255,255,0.7)",
+                  fontSize: "1.05rem",
+                  fontWeight: "bold",
+                  transition: "all 0.2s ease",
+                  textShadow: hovered === "LOGOUT" ? "0 0 8px rgba(255,255,255,0.8)" : "none",
+                  outline: "none",
+                }}
+              >
+                LOGOUT
+              </button>
+            </>
+          ) : (
+            <>
+              <Link
+                href="/login"
+                onMouseEnter={() => setHovered("LOGIN")}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  color: hovered === "LOGIN" ? "#fff" : "#ffcc00",
+                  textDecoration: "none",
+                  fontSize: "1.05rem",
+                  fontWeight: "bold",
+                  transition: "all 0.2s ease",
+                  textShadow: hovered === "LOGIN" ? "0 0 8px rgba(255, 204, 0, 0.8)" : "none",
+                }}
+              >
+                LOGIN
+              </Link>
+              <Link
+                href="/signup"
+                onMouseEnter={() => setHovered("SIGNUP")}
+                onMouseLeave={() => setHovered(null)}
+                style={{
+                  textDecoration: "none",
+                  fontSize: "1.05rem",
+                  fontWeight: "bold",
+                  transition: "all 0.2s ease",
+                  display: "inline-block",
+                  background: "linear-gradient(90deg, #F5D76E, #59ABE3, #F1828D)",
+                  WebkitBackgroundClip: "text",
+                  WebkitTextFillColor: "transparent",
+                  filter: hovered === "SIGNUP" ? "brightness(1.2) drop-shadow(0 0 8px rgba(241, 130, 141, 0.6))" : "none",
+                  transform: hovered === "SIGNUP" ? "scale(1.1)" : "scale(1)",
+                }}
+              >
+                SIGN UP
+              </Link>
+            </>
+          )}
         </div>
       </div>
         </nav>
