@@ -71,6 +71,26 @@ const IconDatabase = <svg width="28" height="28" viewBox="0 0 24 24" fill="none"
 const IconFileText = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"></path><polyline points="14 2 14 8 20 8"></polyline><line x1="16" y1="13" x2="8" y2="13"></line><line x1="16" y1="17" x2="8" y2="17"></line><polyline points="10 9 9 9 8 9"></polyline></svg>;
 const IconArrowUpDown = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="8 9 12 5 16 9"></polyline><polyline points="16 15 12 19 8 15"></polyline><line x1="12" y1="5" x2="12" y2="19"></line></svg>;
 const IconGrid = <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="14" y="14" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect></svg>;
+const IconGitHub = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22"></path></svg>;
+const IconLinkedIn = <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>;
+const IconSun = (
+  <svg width="36" height="36" viewBox="0 0 100 100">
+    <defs>
+      <linearGradient id="sunGradApp" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#ffcc00" />
+        <stop offset="50%" stopColor="#ff6600" />
+        <stop offset="100%" stopColor="#ff0088" />
+      </linearGradient>
+      <mask id="stripeMaskApp">
+        <rect width="100" height="100" fill="white" />
+        {[...Array(10)].map((_, i) => (
+          <rect key={i} x="0" y={50 + i * 10} width="100" height="4.5" fill="black" />
+        ))}
+      </mask>
+    </defs>
+    <circle cx="50" cy="50" r="50" fill="url(#sunGradApp)" mask="url(#stripeMaskApp)" />
+  </svg>
+);
 
 export default function Home() {
   const [url, setUrl] = useState("");
@@ -540,7 +560,11 @@ export default function Home() {
                     borderRadius: "24px",
                     background: "rgba(255,255,255,0.03)",
                     border: "1px solid rgba(255,255,255,0.15)",
-                    boxShadow: "0 4px 30px rgba(0,0,0,0.5)"
+                    boxShadow: "0 4px 30px rgba(0,0,0,0.5)",
+                    display: "flex",
+                    flexDirection: "column",
+                    alignItems: "center",
+                    textAlign: "center"
                   }}>
                     <h3 style={{ marginBottom: "16px", fontSize: "1.8rem", fontWeight: "bold", textTransform: "uppercase", letterSpacing: "2px" }}>
                       <GradientText
@@ -555,7 +579,7 @@ export default function Home() {
                     <p style={{ color: "rgba(255,255,255,0.7)", fontSize: "0.95rem", marginBottom: "30px", lineHeight: 1.5, maxWidth: "800px" }}>
                       The largest folders in your repository are assigned distinct neon colors. Every building (file) within that folder shares its district's color, grouping related code visually.
                     </p>
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: "24px" }}>
+                    <div style={{ display: "flex", flexWrap: "wrap", justifyContent: "center", gap: "24px" }}>
                       {[
                         { c: "#00ffff", l: "src/" }, { c: "#2563eb", l: "components/" },
                         { c: "#d946ef", l: "lib/" }, { c: "#38bdf8", l: "api/" },
@@ -578,6 +602,168 @@ export default function Home() {
                     </div>
                   </div>
                 </div>
+
+                {/* Bottom Call to Action */}
+                <div style={{
+                  width: "100%",
+                  display: "flex",
+                  flexDirection: "column",
+                  alignItems: "center",
+                  marginTop: "15vh",
+                  marginBottom: "5vh",
+                  padding: "0 20px",
+                  position: "relative",
+                  zIndex: 20
+                }}>
+                  <h2 style={{
+                    fontSize: "2.5rem",
+                    fontWeight: "bold",
+                    color: "rgba(255,255,255,0.9)",
+                    marginBottom: "40px",
+                    textAlign: "center",
+                    textTransform: "uppercase",
+                    letterSpacing: "2px",
+                    textShadow: "0 0 15px rgba(255, 255, 255, 0.4)"
+                  }}>
+                    Paste your repo and build your city
+                  </h2>
+                  <div style={{ width: "100%", maxWidth: "600px" }}>
+                    <form onSubmit={(e) => { e.preventDefault(); handleGenerate(); }} style={{ width: "100%" }}>
+                      <div className="rainbow-border-wrap" style={{ display: "flex", alignItems: "center" }}>
+                        <div className="border-spinner"></div>
+                        <input
+                          type="text"
+                          value={url}
+                          onChange={(e) => setUrl(e.target.value)}
+                          placeholder="https://github.com/username/repo"
+                          style={{
+                            width: "100%",
+                            background: "transparent",
+                            border: "none",
+                            borderRadius: "12px",
+                            color: "#fff",
+                            fontSize: "1rem",
+                            padding: url ? "12px 140px 12px 20px" : "12px 20px",
+                            outline: "none",
+                            letterSpacing: "1px",
+                            transition: "all 0.3s ease",
+                          }}
+                          autoComplete="off"
+                          spellCheck="false"
+                          disabled={loading}
+                          onFocus={(e) => { e.target.parentElement?.classList.add('focused'); }}
+                          onBlur={(e) => { e.target.parentElement?.classList.remove('focused'); }}
+                        />
+                        <AnimatePresence>
+                          {url && (
+                            <motion.button
+                              initial={{ opacity: 0, scale: 0.9, x: 10 }}
+                              animate={{ opacity: 1, scale: 1, x: 0 }}
+                              exit={{ opacity: 0, scale: 0.9, x: 10 }}
+                              transition={{ duration: 0.2 }}
+                              type="submit"
+                              disabled={loading}
+                              className="liquid-glass-btn"
+                              style={{
+                                position: "absolute",
+                                right: "6px",
+                                border: "none",
+                                borderRadius: "8px",
+                                color: "#fff",
+                                padding: "8px 16px",
+                                cursor: loading ? "not-allowed" : "pointer",
+                                fontSize: "0.85rem",
+                                fontWeight: "bold",
+                                textTransform: "uppercase",
+                                letterSpacing: "1px",
+                                opacity: loading ? 0.7 : 1,
+                                transition: "all 0.2s ease",
+                                zIndex: 10,
+                                textShadow: "0 1px 2px rgba(0,0,0,0.3)"
+                              }}
+                              onMouseEnter={(e) => {
+                                if (!loading) {
+                                  e.currentTarget.style.transform = "scale(1.05)";
+                                  e.currentTarget.style.boxShadow = "0 4px 15px rgba(89, 82, 156, 0.6)";
+                                }
+                              }}
+                              onMouseLeave={(e) => {
+                                e.currentTarget.style.transform = "scale(1)";
+                                e.currentTarget.style.boxShadow = "none";
+                              }}
+                            >
+                              {loading ? "PROCESSING..." : "GENERATE"}
+                            </motion.button>
+                          )}
+                        </AnimatePresence>
+                      </div>
+                    </form>
+                  </div>
+                </div>
+
+                {/* Main Footer */}
+                <footer className="liquid-glass" style={{
+                  width: "100%",
+                  marginTop: "10vh", 
+                  padding: "80px 4vw 25vh 4vw", // Huge padding at the bottom for extra space
+                  position: "relative",
+                  zIndex: 20
+                }}>
+                  <div style={{ maxWidth: "1200px", margin: "0 auto", display: "flex", justifyContent: "space-between", flexWrap: "wrap", gap: "40px", alignItems: "flex-start" }}>
+                    
+                    {/* Left Column: Logo & Socials */}
+                    <div style={{ display: "flex", flexDirection: "column", gap: "20px" }}>
+                      
+                      {/* Clickable Logo Area */}
+                      <a href="/" style={{ display: "flex", alignItems: "center", gap: "16px", textDecoration: "none", cursor: "pointer" }}>
+                        {/* Synthwave Sun Logo */}
+                        <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+                          {IconSun}
+                        </div>
+                        <h2 style={{ fontSize: "2rem", fontWeight: "bold", letterSpacing: "3px", margin: 0 }}>
+                          <GradientText colors={["#F5D76E", "#59ABE3", "#F1828D"]} animationSpeed={4} showBorder={false}>
+                            CITY OF CODE
+                          </GradientText>
+                        </h2>
+                      </a>
+                      
+                      {/* Social Icons */}
+                      <div style={{ display: "flex", gap: "20px", color: "rgba(255,255,255,0.5)", marginTop: "4px" }}>
+                        <a href="https://github.com/Surabhi0055" target="_blank" rel="noopener noreferrer" style={{ transition: "color 0.3s ease", color: "inherit" }} onMouseOver={(e) => e.currentTarget.style.color = "#ff00cc"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.5)"}>
+                          {IconGitHub}
+                        </a>
+                        <a href="#" target="_blank" rel="noopener noreferrer" style={{ transition: "color 0.3s ease", color: "inherit" }} onMouseOver={(e) => e.currentTarget.style.color = "#38bdf8"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.5)"}>
+                          {IconLinkedIn}
+                        </a>
+                      </div>
+                    </div>
+
+                    {/* Right Column: Links */}
+                    <div style={{ 
+                      display: "flex", 
+                      gap: "40px", 
+                      color: "rgba(255,255,255,0.6)", 
+                      fontSize: "0.95rem", 
+                      letterSpacing: "2px", 
+                      textTransform: "uppercase",
+                      fontWeight: "bold",
+                      alignItems: "center",
+                      marginTop: "10px"
+                    }}>
+                      <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#00ffff"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Home</a>
+                      <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#F5D76E"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>About</a>
+                      <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#ff00cc"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Docs</a>
+                    </div>
+                  </div>
+                  
+                  {/* Divider */}
+                  <div style={{ maxWidth: "1200px", margin: "40px auto 20px", height: "1px", width: "100%", background: "linear-gradient(90deg, rgba(255,0,255,0.3), transparent)" }} />
+                  
+                  {/* Copyright */}
+                  <div style={{ maxWidth: "1200px", margin: "0 auto", color: "rgba(255,255,255,0.4)", fontSize: "0.85rem", fontFamily: "monospace" }}>
+                    © {new Date().getFullYear()} CITY OF CODE. BUILT WITH NEON AND REACT THREE FIBER.
+                  </div>
+                </footer>
               </div>
 
               <GradualBlur

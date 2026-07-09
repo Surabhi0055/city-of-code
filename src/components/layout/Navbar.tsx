@@ -161,12 +161,16 @@ export default function Navbar() {
             onMouseEnter={() => setHovered("SIGNUP")}
             onMouseLeave={() => setHovered(null)}
             style={{
-              color: hovered === "SIGNUP" ? "#fff" : "#ff00aa",
               textDecoration: "none",
               fontSize: "1.05rem",
               fontWeight: "bold",
               transition: "all 0.2s ease",
-              textShadow: hovered === "SIGNUP" ? "0 0 8px rgba(255, 0, 170, 0.8)" : "none",
+              display: "inline-block",
+              background: "linear-gradient(90deg, #F5D76E, #59ABE3, #F1828D)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+              filter: hovered === "SIGNUP" ? "brightness(1.2) drop-shadow(0 0 8px rgba(241, 130, 141, 0.6))" : "none",
+              transform: hovered === "SIGNUP" ? "scale(1.1)" : "scale(1)",
             }}
           >
             SIGN UP
