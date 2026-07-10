@@ -4,8 +4,9 @@ import Link from "next/link";
 import { useState, useEffect, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
+import { usePathname } from "next/navigation";
 
-function SunLogo({ isHovered }: { isHovered: boolean }) {
+export function SunLogo({ isHovered }: { isHovered: boolean }) {
   return (
     <svg width="40" height="40" viewBox="0 0 100 100">
       <defs>
@@ -38,6 +39,7 @@ export default function Navbar() {
   const [logoHovered, setLogoHovered] = useState(false);
   const [hidden, setHidden] = useState(false);
   const { data: session } = useSession();
+  const pathname = usePathname();
 
   useEffect(() => {
     // Listen for scroll on any scrollable container inside the page
@@ -58,6 +60,9 @@ export default function Navbar() {
     { name: "ABOUT", path: "/about" },
     { name: "DOCS", path: "/docs" },
   ];
+
+  // Hide the Navbar completely on the signup page
+  if (pathname === "/signup") return null;
 
   return (
     <AnimatePresence>
@@ -174,21 +179,6 @@ export default function Navbar() {
           ) : (
             <>
               <Link
-                href="/login"
-                onMouseEnter={() => setHovered("LOGIN")}
-                onMouseLeave={() => setHovered(null)}
-                style={{
-                  color: hovered === "LOGIN" ? "#fff" : "#ffcc00",
-                  textDecoration: "none",
-                  fontSize: "1.05rem",
-                  fontWeight: "bold",
-                  transition: "all 0.2s ease",
-                  textShadow: hovered === "LOGIN" ? "0 0 8px rgba(255, 204, 0, 0.8)" : "none",
-                }}
-              >
-                LOGIN
-              </Link>
-              <Link
                 href="/signup"
                 onMouseEnter={() => setHovered("SIGNUP")}
                 onMouseLeave={() => setHovered(null)}
@@ -198,14 +188,16 @@ export default function Navbar() {
                   fontWeight: "bold",
                   transition: "all 0.2s ease",
                   display: "inline-block",
-                  background: "linear-gradient(90deg, #F5D76E, #59ABE3, #F1828D)",
-                  WebkitBackgroundClip: "text",
-                  WebkitTextFillColor: "transparent",
-                  filter: hovered === "SIGNUP" ? "brightness(1.2) drop-shadow(0 0 8px rgba(241, 130, 141, 0.6))" : "none",
-                  transform: hovered === "SIGNUP" ? "scale(1.1)" : "scale(1)",
+                  padding: "6px 16px",
+                  borderRadius: "20px",
+                  border: "1px solid rgba(255, 102, 170, 0.5)",
+                  background: hovered === "SIGNUP" ? "rgba(255, 102, 170, 0.15)" : "transparent",
+                  color: hovered === "SIGNUP" ? "#fff" : "#ff66aa",
+                  textShadow: hovered === "SIGNUP" ? "0 0 10px rgba(255, 102, 170, 0.8)" : "none",
+                  boxShadow: hovered === "SIGNUP" ? "0 0 15px rgba(255, 102, 170, 0.4) inset" : "none",
                 }}
               >
-                SIGN UP
+                START BUILDING
               </Link>
             </>
           )}

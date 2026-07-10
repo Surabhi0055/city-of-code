@@ -1,8 +1,10 @@
 "use client";
 
+import Link from "next/link";
 import { signIn } from "next-auth/react";
 import { motion } from "framer-motion";
 import GradientText from "@/components/ui/GradientText";
+import { SunLogo } from "@/components/layout/Navbar";
 
 export default function SignupPage() {
   return (
@@ -18,7 +20,36 @@ export default function SignupPage() {
         justifyContent: "center", 
         alignItems: "center",
         zIndex: 10,
+        pointerEvents: "none"
+      }}>
         
+        {/* Top Left Logo Area */}
+        <Link href="/" style={{
+          position: "absolute",
+          top: "24px",
+          left: "32px",
+          display: "flex",
+          alignItems: "center",
+          gap: "12px",
+          pointerEvents: "auto",
+          textDecoration: "none",
+          cursor: "pointer"
+        }}>
+          <SunLogo isHovered={false} />
+          <span
+            style={{
+              fontSize: "1.5rem",
+              fontWeight: "bold",
+              letterSpacing: "2px",
+              background: "linear-gradient(to right, #F5D76E, #59ABE3, #F1828D)",
+              WebkitBackgroundClip: "text",
+              WebkitTextFillColor: "transparent",
+            }}
+          >
+            CITY_OF_CODE
+          </span>
+        </Link>
+
         {/* Auth Card */}
         <motion.div 
           initial={{ opacity: 0, y: 30 }}

@@ -20,7 +20,7 @@ export const authOptions = {
     strategy: "jwt" as const,
   },
   pages: {
-    signIn: '/login',
+    signIn: '/signup',
   },
   secret: process.env.NEXTAUTH_SECRET || "fallback_secret_for_local_development_only",
 };
