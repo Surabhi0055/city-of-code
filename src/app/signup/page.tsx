@@ -14,7 +14,6 @@ export default function SignupPage() {
   return (
     <div style={{ width: "100vw", height: "100vh", display: "flex", overflow: "hidden", background: "#06001a" }}>
 
-      {/* ── Left Half – Auth Card ─────────────────────────────── */}
       <div style={{
         width: "50%",
         height: "100%",
@@ -172,30 +171,45 @@ export default function SignupPage() {
 
 
 
-      {/* ── Right Half – Mini 3-D City ───────────────────────── */}
       <motion.div
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         transition={{ duration: 1.2, delay: 0.3 }}
-        style={{ width: "50%", height: "100%", position: "relative" }}
+        style={{ 
+          width: "50%", 
+          height: "100%", 
+          padding: "24px 24px 24px 0", // Padding on top, right, bottom (none on left to stay close to center if desired, or add left padding for a full floating card)
+          display: "flex" 
+        }}
       >
-        {/* Subtle label */}
         <div style={{
-          position: "absolute",
-          bottom: "24px",
-          left: "50%",
-          transform: "translateX(-50%)",
-          zIndex: 10,
-          color: "rgba(255,255,255,0.25)",
-          fontSize: "0.75rem",
-          letterSpacing: "3px",
-          pointerEvents: "none",
-          userSelect: "none",
+          position: "relative",
+          width: "100%",
+          height: "100%",
+          borderRadius: "32px",
+          overflow: "hidden",
+          border: "2px solid rgba(255, 255, 255, 0.15)",
+          boxShadow: "0 30px 60px rgba(0,0,0,0.6), inset 0 0 20px rgba(255,255,255,0.02)",
+          background: "#06001a"
         }}>
-          YOUR CITY AWAITS
-        </div>
+          {/* Subtle label */}
+          <div style={{
+            position: "absolute",
+            bottom: "24px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 10,
+            color: "rgba(255,255,255,0.25)",
+            fontSize: "0.75rem",
+            letterSpacing: "3px",
+            pointerEvents: "none",
+            userSelect: "none",
+          }}>
+            YOUR CITY AWAITS
+          </div>
 
-        <DemoCityScene />
+          <DemoCityScene />
+        </div>
       </motion.div>
 
     </div>

@@ -4,6 +4,7 @@ import { useMemo, useRef } from "react";
 import * as THREE from "three";
 import { MeshReflectorMaterial } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
+import React from "react";
 import { RoadData, DistrictData } from "@/lib/cityLayout";
 
 interface CityGridProps {
@@ -11,6 +12,7 @@ interface CityGridProps {
   roads?: RoadData[];
   districts?: DistrictData[];
   isHomepage?: boolean;
+  isDemo?: boolean; // when true: skip MeshReflectorMaterial, use solid asphalt
 }
 
 const GlobalGradientShader = {
@@ -205,7 +207,7 @@ function StreetLight({ position, rotation, color }: { position: [number, number,
   );
 }
 
-export default function CityGrid({ gridSize, roads = [], districts = [], isHomepage = false }: CityGridProps) {
+export default function CityGrid({ gridSize, roads = [], districts = [], isHomepage = false, isDemo = false }: CityGridProps) {
   const planeGeom = useMemo(() => new THREE.PlaneGeometry(1, 1), []);
 
   const gridUniforms = useMemo(() => ({
@@ -245,25 +247,33 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
 
   return (
     <>
-      {/* Ground plane — wet road reflective surface (Asphalt) */}
+      {/* Ground plane — solid asphalt in demo, reflective on homepage */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
-        <MeshReflectorMaterial
-          blur={[300, 300]} // Massive blur for soft light reflection
-          resolution={1024}
-          mixBlur={2.5}     // High mix blur
-          mixStrength={25.0} // Very strong reflection
-          roughness={0.2}   // Slightly rougher asphalt
-          depthScale={1.2}
-          minDepthThreshold={0.4}
-          maxDepthThreshold={1.4}
-          color="#030508"
-          metalness={0.8}
-          mirror={1}
-        />
+        {isDemo ? (
+          <meshStandardMaterial
+            color="#030508"
+            roughness={0.95}
+            metalness={0.0}
+          />
+        ) : (
+          <MeshReflectorMaterial
+            blur={[300, 300]}
+            resolution={1024}
+            mixBlur={2.5}
+            mixStrength={25.0}
+            roughness={0.2}
+            depthScale={1.2}
+            minDepthThreshold={0.4}
+            maxDepthThreshold={1.4}
+            color="#030508"
+            metalness={0.8}
+            mirror={1}
+          />
+        )}
       </mesh>
 
-      {/* The global circuit grid */}
+      {/* The global circuit grid — in demo mode render everywhere (no stencil gating) */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0.001, 0]} frustumCulled={true}>
         <planeGeometry args={[gridSize * 1.5, gridSize * 1.5]} />
         <shaderMaterial 
@@ -272,9 +282,11 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
           fragmentShader={CircuitGridShader.fragmentShader}
           transparent={true}
           depthWrite={false}
-          stencilWrite={true}
-          stencilRef={0}
-          stencilFunc={THREE.EqualStencilFunc}
+          {...(!isDemo ? {
+            stencilWrite: true,
+            stencilRef: 0,
+            stencilFunc: THREE.EqualStencilFunc,
+          } : {})}
         />
       </mesh>
 
@@ -349,8 +361,8 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
 
         return (
           <group key={`${road.id}-${i}`} position={[road.x, 0, road.z]}>
-            {/* Stencil cutout for ground roads ONLY */}
-            {!isElevated && (
+            {/* Stencil cutout for ground roads ONLY (skip in demo — no stencil pipeline) */}
+            {!isElevated && !isDemo && (
               <mesh 
                 position={[0, roadY, 0]} 
                 rotation={[-Math.PI / 2, 0, 0]} 
@@ -362,7 +374,19 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
               />
             )}
 
-            {/* Dark shiny road surface removed since global ground is the asphalt */}
+            {/* Solid dark asphalt road surface (demo only — replaces stencil trick) */}
+            {!isElevated && isDemo && (
+              <mesh
+                position={[0, roadY + 0.001, 0]}
+                rotation={[-Math.PI / 2, 0, 0]}
+                geometry={planeGeom}
+                scale={[surfaceW, surfaceL, 1]}
+                frustumCulled={true}
+                renderOrder={0}
+              >
+                <meshStandardMaterial color="#03040a" roughness={0.98} metalness={0.0} />
+              </mesh>
+            )}
 
             {isElevated && (
               <>
@@ -387,14 +411,23 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
               frustumCulled={true}
               renderOrder={1}
             >
-              <shaderMaterial 
-                args={[dashedShaderArgs]} 
-                transparent={true} 
-                depthWrite={false} 
-                stencilWrite={!isElevated} 
-                stencilRef={1} 
-                stencilFunc={THREE.EqualStencilFunc} 
-              />
+              {isDemo ? (
+                // Demo: plain dashes, no stencil
+                <shaderMaterial 
+                  args={[dashedShaderArgs]} 
+                  transparent={true} 
+                  depthWrite={false} 
+                />
+              ) : (
+                <shaderMaterial 
+                  args={[dashedShaderArgs]} 
+                  transparent={true} 
+                  depthWrite={false} 
+                  stencilWrite={!isElevated} 
+                  stencilRef={1} 
+                  stencilFunc={THREE.EqualStencilFunc} 
+                />
+              )}
             </mesh>
 
             {!isAlley && (
@@ -408,7 +441,9 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
                   frustumCulled={true}
                   renderOrder={1}
                 >
-                  <meshBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={0.9} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
+                  <meshBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={0.9}
+                    {...(!isDemo ? { stencilWrite: !isElevated, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc } : {})}
+                  />
                 </mesh>
 
                 {/* Edge line 2 */}
@@ -420,7 +455,9 @@ export default function CityGrid({ gridSize, roads = [], districts = [], isHomep
                   frustumCulled={true}
                   renderOrder={1}
                 >
-                  <meshBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={0.9} stencilWrite={!isElevated} stencilRef={1} stencilFunc={THREE.EqualStencilFunc} />
+                  <meshBasicMaterial color={edgeColor} toneMapped={false} transparent opacity={0.9}
+                    {...(!isDemo ? { stencilWrite: !isElevated, stencilRef: 1, stencilFunc: THREE.EqualStencilFunc } : {})}
+                  />
                 </mesh>
               </>
             )}
