@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
 import { usePathname } from "next/navigation";
@@ -38,8 +38,20 @@ export default function Navbar() {
   const [hovered, setHovered] = useState<string | null>(null);
   const [logoHovered, setLogoHovered] = useState(false);
   const [hidden, setHidden] = useState(false);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
   const pathname = usePathname();
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+        setDropdownOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   useEffect(() => {
     // Listen for scroll on any scrollable container inside the page
@@ -83,7 +95,7 @@ export default function Navbar() {
             zIndex: 50,
           }}
         >
-      <div className="liquid-glass">
+      <div className="liquid-glass" style={{ overflow: "visible" }}>
         <nav
           style={{
             position: "relative",
@@ -149,33 +161,74 @@ export default function Navbar() {
         {/* Auth Links */}
         <div style={{ display: "flex", gap: "20px", alignItems: "center", borderLeft: "1px solid rgba(255, 255, 255, 0.1)", paddingLeft: "32px" }}>
           {session ? (
-            <>
-              {session.user?.image ? (
-                <img src={session.user.image} alt="Avatar" style={{ width: "32px", height: "32px", borderRadius: "50%", border: "2px solid rgba(255,255,255,0.3)" }} />
-              ) : (
-                <div style={{ width: "32px", height: "32px", borderRadius: "50%", background: "linear-gradient(90deg, #F5D76E, #F1828D)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "bold" }}>
-                  {session.user?.name?.charAt(0) || "U"}
-                </div>
-              )}
-              <button
-                onClick={() => signOut()}
-                onMouseEnter={() => setHovered("LOGOUT")}
-                onMouseLeave={() => setHovered(null)}
+            <div ref={dropdownRef} style={{ position: "relative" }}>
+              <button 
+                onClick={() => setDropdownOpen(!dropdownOpen)}
                 style={{
-                  background: "transparent",
+                  background: "none",
                   border: "none",
                   cursor: "pointer",
-                  color: hovered === "LOGOUT" ? "#fff" : "rgba(255,255,255,0.7)",
-                  fontSize: "1.05rem",
-                  fontWeight: "bold",
-                  transition: "all 0.2s ease",
-                  textShadow: hovered === "LOGOUT" ? "0 0 8px rgba(255,255,255,0.8)" : "none",
-                  outline: "none",
+                  padding: 0,
+                  display: "flex",
+                  alignItems: "center",
+                  justifyContent: "center",
                 }}
               >
-                LOGOUT
+                {session.user?.image ? (
+                  <img src={session.user.image} alt="Avatar" style={{ width: "36px", height: "36px", borderRadius: "50%", border: dropdownOpen ? "2px solid #ff00aa" : "2px solid rgba(255,255,255,0.3)", transition: "all 0.2s ease" }} />
+                ) : (
+                  <div style={{ width: "36px", height: "36px", borderRadius: "50%", background: "linear-gradient(90deg, #F5D76E, #F1828D)", display: "flex", alignItems: "center", justifyContent: "center", color: "#fff", fontWeight: "bold", border: dropdownOpen ? "2px solid #ff00aa" : "2px solid transparent", transition: "all 0.2s ease" }}>
+                    {session.user?.name?.charAt(0) || "U"}
+                  </div>
+                )}
               </button>
-            </>
+
+              <AnimatePresence>
+                {dropdownOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, y: 10, scale: 0.95 }}
+                    animate={{ opacity: 1, y: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: 10, scale: 0.95 }}
+                    transition={{ duration: 0.2 }}
+                    style={{
+                      position: "absolute",
+                      top: "50px",
+                      right: 0,
+                      width: "160px",
+                      background: "rgba(10, 5, 25, 0.9)",
+                      backdropFilter: "blur(12px)",
+                      border: "1px solid rgba(255, 255, 255, 0.1)",
+                      borderRadius: "12px",
+                      padding: "8px",
+                      display: "flex",
+                      flexDirection: "column",
+                      gap: "4px",
+                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+                    }}
+                  >
+                    <button
+                      onClick={() => signOut()}
+                      onMouseEnter={() => setHovered("LOGOUT")}
+                      onMouseLeave={() => setHovered(null)}
+                      style={{
+                        background: hovered === "LOGOUT" ? "rgba(255, 0, 170, 0.1)" : "transparent",
+                        border: "none",
+                        color: hovered === "LOGOUT" ? "#ff00aa" : "#fff",
+                        cursor: "pointer",
+                        padding: "10px 12px",
+                        borderRadius: "8px",
+                        fontSize: "0.9rem",
+                        textAlign: "left",
+                        transition: "all 0.2s ease",
+                        width: "100%",
+                      }}
+                    >
+                      LOGOUT
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
           ) : (
             <>
               <Link

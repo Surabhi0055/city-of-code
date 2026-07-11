@@ -22,6 +22,16 @@ export const authOptions = {
   pages: {
     signIn: '/signup',
   },
+  callbacks: {
+    async redirect({ url, baseUrl }) {
+      // Always redirect to home after sign-in, never back to /signup
+      if (url.startsWith(baseUrl)) {
+        if (url.includes('/signup') || url.includes('/api/auth')) return baseUrl;
+        return url;
+      }
+      return baseUrl;
+    },
+  },
   secret: process.env.NEXTAUTH_SECRET || "fallback_secret_for_local_development_only",
 };
 

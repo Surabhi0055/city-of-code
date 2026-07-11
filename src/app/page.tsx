@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback } from "react";
+import { useState, useCallback, useEffect } from "react";
 import * as THREE from "three";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { motion, AnimatePresence } from "framer-motion";
@@ -11,7 +11,9 @@ import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import InfoPanel from "@/components/three/InfoPanel";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
+import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
+import { useSession } from "next-auth/react";
 
 function ScrollCamera({ scrollY, maxScroll, isHomepage }: { scrollY: number; maxScroll: number; isHomepage: boolean }) {
   useFrame((state) => {
@@ -20,11 +22,8 @@ function ScrollCamera({ scrollY, maxScroll, isHomepage }: { scrollY: number; max
     const mScroll = Math.max(maxScroll, 1);
     const progress = Math.min(scrollY / mScroll, 1.0);
     
-    // Smoothly interpolate camera position deeper into the neon city
-    // Starts at z=40, flies over the city to z=-20
     const targetZ = THREE.MathUtils.lerp(40, -10, progress);
     
-    // Starts high (y=8), rises up slightly to look over buildings (y=15)
     const targetY = THREE.MathUtils.lerp(8, 20, progress);
     
     state.camera.position.lerp(new THREE.Vector3(0, targetY, targetZ), 0.05);
@@ -93,6 +92,7 @@ const IconSun = (
 );
 
 export default function Home() {
+  const { data: session } = useSession();
   const [url, setUrl] = useState("");
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [roads, setRoads] = useState<RoadData[]>([]);
@@ -113,8 +113,26 @@ export default function Home() {
   const [scrollY, setScrollY] = useState(0);
   const [maxScroll, setMaxScroll] = useState(1500);
 
-  async function handleGenerate() {
-    const parsed = parseGitHubUrl(url);
+  // Load saved city on mount if logged in
+  useEffect(() => {
+    if (session?.user) {
+      fetch("/api/user/data")
+        .then((res) => res.json())
+        .then((data) => {
+          if (data.lastCityUrl) {
+            setUrl(data.lastCityUrl);
+            // Automatically generate the saved city
+            handleGenerate(data.lastCityUrl);
+          }
+        })
+        .catch((err) => console.error("Failed to fetch saved city", err));
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session]);
+
+  async function handleGenerate(targetUrl?: string) {
+    const urlToUse = targetUrl || url;
+    const parsed = parseGitHubUrl(urlToUse);
     if (!parsed) {
       setError("Invalid GitHub URL. Try: https://github.com/owner/repo");
       return;
@@ -129,7 +147,6 @@ export default function Home() {
     setExplanation("");
 
     try {
-      // Guarantee at least 3.5 seconds of loading time for the epic sun transition
       const [repoData] = await Promise.all([
         fetchRepoData(parsed.owner, parsed.repo),
         new Promise(resolve => setTimeout(resolve, 3500))
@@ -140,6 +157,16 @@ export default function Home() {
       setRoads(cityData.roads);
       setDistricts(cityData.districts);
       setRepoInfo({ owner: parsed.owner, repo: parsed.repo });
+
+      // Save to database if logged in
+      if (session?.user) {
+        fetch("/api/user/data", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ url: urlToUse }),
+        }).catch((err) => console.error("Failed to save city data", err));
+      }
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Something went wrong");
     } finally {
@@ -177,7 +204,7 @@ export default function Home() {
         await streamFileExplanation(
           data.fileName,
           content,
-          (chunk) => {
+          (chunk: string) => {
             // Append each chunk to explanation as it streams
             setExplanation((prev) => prev + chunk);
           },
