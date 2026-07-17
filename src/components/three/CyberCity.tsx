@@ -5,7 +5,6 @@ import { OrbitControls } from "@react-three/drei";
 import { useFrame } from "@react-three/fiber";
 import * as THREE from "three";
 import CityGrid from "./CityGrid";
-import LampPosts from "./LampPosts";
 import CityLights from "./CityLights";
 import CityClouds from "./CityClouds";
 import RetroMountains from "./RetroMountains";
@@ -158,17 +157,10 @@ function SynthwaveSun({ loading = false }: { loading?: boolean }) {
 
   useFrame((state, delta) => {
     if (groupRef.current) {
-      if (loading) {
-        // Zoom in massively to cover the screen
-        groupRef.current.position.lerp(new THREE.Vector3(0, 8, -30), 1.5 * delta);
-        groupRef.current.scale.lerp(new THREE.Vector3(15, 15, 15), 1.5 * delta);
-        uniforms.uZoom.value = THREE.MathUtils.lerp(uniforms.uZoom.value, 1.0, 2.0 * delta);
-      } else {
-        // Normal far horizon position
-        groupRef.current.position.lerp(new THREE.Vector3(0, 8, -120), 3.0 * delta);
-        groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 3.0 * delta);
-        uniforms.uZoom.value = THREE.MathUtils.lerp(uniforms.uZoom.value, 0.0, 3.0 * delta);
-      }
+      // Normal far horizon position
+      groupRef.current.position.lerp(new THREE.Vector3(0, 8, -120), 3.0 * delta);
+      groupRef.current.scale.lerp(new THREE.Vector3(1, 1, 1), 3.0 * delta);
+      uniforms.uZoom.value = THREE.MathUtils.lerp(uniforms.uZoom.value, 0.0, 3.0 * delta);
     }
   });
 
@@ -333,7 +325,6 @@ export default function CyberCity({ gridSize = 100, buildings = [], roads = [], 
       />
 
       <CityGrid gridSize={gridSize} roads={roads} districts={districts} isHomepage={isHomepage} />
-      <LampPosts roads={roads} />
       {districts && districts.length > 0 && <CityLights districts={districts} />}
       <CityClouds gridSize={gridSize} />
       <Starfield />

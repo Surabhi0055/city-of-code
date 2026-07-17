@@ -31,10 +31,18 @@ export async function POST(req: Request) {
 
     const { url } = await req.json();
 
-    await prisma.user.update({
+    const user = await prisma.user.update({
       where: { email: session.user.email },
       data: { lastCityUrl: url },
     });
+
+    if (user) {
+      await prisma.savedCity.upsert({
+        where: { userId_url: { userId: user.id, url } },
+        update: {},
+        create: { userId: user.id, url },
+      });
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {

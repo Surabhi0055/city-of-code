@@ -14,6 +14,7 @@ import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
 import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
 import { useSession } from "next-auth/react";
+import { useSearchParams, useRouter } from "next/navigation";
 
 function ScrollCamera({ scrollY, maxScroll, isHomepage }: { scrollY: number; maxScroll: number; isHomepage: boolean }) {
   useFrame((state) => {
@@ -93,7 +94,10 @@ const IconSun = (
 
 export default function Home() {
   const { data: session } = useSession();
-  const [url, setUrl] = useState("");
+  const searchParams = useSearchParams();
+  const urlParam = searchParams.get("url");
+  const router = useRouter();
+  const [url, setUrl] = useState(urlParam || "");
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [roads, setRoads] = useState<RoadData[]>([]);
   const [districts, setDistricts] = useState<DistrictData[]>([]);
@@ -115,20 +119,13 @@ export default function Home() {
 
   // Load saved city on mount if logged in
   useEffect(() => {
-    if (session?.user) {
-      fetch("/api/user/data")
-        .then((res) => res.json())
-        .then((data) => {
-          if (data.lastCityUrl) {
-            setUrl(data.lastCityUrl);
-            // Automatically generate the saved city
-            handleGenerate(data.lastCityUrl);
-          }
-        })
-        .catch((err) => console.error("Failed to fetch saved city", err));
+    if (urlParam) {
+      handleGenerate(urlParam);
+      // Remove query param without reloading to keep URL clean
+      router.replace("/");
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session]);
+  }, [session, urlParam]);
 
   async function handleGenerate(targetUrl?: string) {
     const urlToUse = targetUrl || url;
@@ -779,7 +776,7 @@ export default function Home() {
                     }}>
                       <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#00ffff"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Home</a>
                       <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#F5D76E"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>About</a>
-                      <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#ff00cc"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Docs</a>
+                      <a href="/projects" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#ff00cc"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Projects</a>
                     </div>
                   </div>
                   

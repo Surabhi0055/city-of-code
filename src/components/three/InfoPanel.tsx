@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { BuildingData } from "@/lib/cityLayout";
 
 interface InfoPanelProps {
@@ -76,6 +76,7 @@ export default function InfoPanel({
   onAnalyze,
 }: InfoPanelProps) {
   const textRef = useRef<HTMLDivElement>(null);
+  const [activeTab, setActiveTab] = useState<"overview" | "code">("overview");
 
   // Auto scroll as text streams
   useEffect(() => {
@@ -298,15 +299,54 @@ export default function InfoPanel({
 
           {/* State 3: Streamed Explanation */}
           {explanation && (
-            <div style={{ display: "flex", flexDirection: "column", gap: "24px" }}>
-              {/* Added code display block */}
+            <div style={{ display: "flex", flexDirection: "column", gap: "16px" }}>
+              {/* Toggle */}
               {fileCode && (
+                <div style={{ display: "flex", gap: "8px", borderBottom: `1px solid ${color}44`, paddingBottom: "12px", marginBottom: "8px" }}>
+                  <button
+                    onClick={() => setActiveTab("overview")}
+                    style={{
+                      background: activeTab === "overview" ? `${color}33` : "transparent",
+                      color: activeTab === "overview" ? "#fff" : `${color}aa`,
+                      border: `1px solid ${activeTab === "overview" ? color : "transparent"}`,
+                      padding: "6px 16px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      letterSpacing: "1px",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    OVERVIEW
+                  </button>
+                  <button
+                    onClick={() => setActiveTab("code")}
+                    style={{
+                      background: activeTab === "code" ? `${color}33` : "transparent",
+                      color: activeTab === "code" ? "#fff" : `${color}aa`,
+                      border: `1px solid ${activeTab === "code" ? color : "transparent"}`,
+                      padding: "6px 16px",
+                      borderRadius: "6px",
+                      cursor: "pointer",
+                      fontSize: "13px",
+                      fontWeight: 600,
+                      letterSpacing: "1px",
+                      transition: "all 0.2s"
+                    }}
+                  >
+                    CODE
+                  </button>
+                </div>
+              )}
+
+              {activeTab === "code" && fileCode ? (
                 <div style={{
                   background: "rgba(0,0,0,0.4)",
                   border: `1px solid ${color}44`,
                   borderRadius: "8px",
                   padding: "16px",
-                  maxHeight: "300px",
+                  maxHeight: "400px",
                   overflowY: "auto",
                   fontSize: "13px",
                   color: "#a8b2d1",
@@ -317,19 +357,19 @@ export default function InfoPanel({
                     <code>{fileCode}</code>
                   </pre>
                 </div>
+              ) : (
+                <div
+                  style={{
+                    fontSize: "16px", 
+                    color: "#e2e8f0",
+                    lineHeight: "2.0",
+                    whiteSpace: "pre-wrap",
+                    wordBreak: "break-word",
+                  }}
+                >
+                  {formatText(explanation, color, isLoading)}
+                </div>
               )}
-
-              <div
-                style={{
-                  fontSize: "16px", 
-                  color: "#e2e8f0",
-                  lineHeight: "2.0",
-                  whiteSpace: "pre-wrap",
-                  wordBreak: "break-word",
-                }}
-              >
-                {formatText(explanation, color, isLoading)}
-              </div>
             </div>
           )}
         </div>

@@ -394,16 +394,18 @@ export default function ProfilePage() {
                         {IconGhost}
                       </div>
                       <p style={{ fontSize: "0.85rem", letterSpacing: "1px", marginBottom: "14px" }}>No project saved yet</p>
-                      <Link href="/" style={{ textDecoration: "none" }}>
-                        <span style={{
+                      <button 
+                        onClick={() => router.push("/")}
+                        className="liquid-glass-btn"
+                        style={{
+                          background: "rgba(0,0,0,0)",
                           display: "inline-block", padding: "8px 20px", borderRadius: "999px",
                           border: "1px solid rgba(0,255,255,0.3)", color: "#00ffff", fontSize: "0.8rem",
                           letterSpacing: "2px", cursor: "pointer",
                           transition: "all 0.2s ease",
                         }}>
-                          CREATE PROJECT →
-                        </span>
-                      </Link>
+                        CREATE PROJECT →
+                      </button>
                     </div>
                   )}
                 </div>

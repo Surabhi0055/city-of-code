@@ -106,7 +106,6 @@ export default function GradientText({
         alignItems: 'center',
         justifyContent: 'center',
         borderRadius: '1.25rem',
-        fontWeight: 500,
         overflow: 'hidden',
         cursor: 'pointer',
         ...(showBorder ? { padding: '4px 8px' } : {}),

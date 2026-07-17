@@ -46,6 +46,7 @@ model User {
   lastCityUrl   String?
   accounts      Account[]
   sessions      Session[]
+  savedCities   SavedCity[]
 }
 
 model VerificationToken {
@@ -54,4 +55,14 @@ model VerificationToken {
   expires    DateTime
 
   @@unique([identifier, token])
+}
+
+model SavedCity {
+  id        String   @id @default(cuid())
+  url       String
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([userId, url])
 }
