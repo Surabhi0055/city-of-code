@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useState, useEffect, useRef, useCallback } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { useSession, signOut } from "next-auth/react";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
 
 export function SunLogo({ isHovered }: { isHovered: boolean }) {
   return (
@@ -42,6 +42,7 @@ export default function Navbar() {
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
   const pathname = usePathname();
+  const router = useRouter();
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -70,7 +71,6 @@ export default function Navbar() {
   const navLinks = [
     { name: "HOME", path: "/" },
     { name: "ABOUT", path: "/about" },
-    { name: "DOCS", path: "/docs" },
   ];
 
   // Hide the Navbar completely on the signup page
@@ -192,38 +192,81 @@ export default function Navbar() {
                     transition={{ duration: 0.2 }}
                     style={{
                       position: "absolute",
-                      top: "50px",
+                      top: "65px",
                       right: 0,
-                      width: "160px",
-                      background: "rgba(10, 5, 25, 0.9)",
-                      backdropFilter: "blur(12px)",
+                      width: "180px",
+                      background: "rgba(10, 5, 25, 0.4)",
+                      backdropFilter: "blur(16px)",
                       border: "1px solid rgba(255, 255, 255, 0.1)",
-                      borderRadius: "12px",
+                      borderRadius: "16px",
                       padding: "8px",
                       display: "flex",
                       flexDirection: "column",
                       gap: "4px",
-                      boxShadow: "0 10px 30px rgba(0, 0, 0, 0.5)",
+                      boxShadow: "0 10px 40px rgba(0,0,0,0.6), 0 0 0 1px rgba(0,255,255,0.05)",
                     }}
                   >
+                    {/* User name hint */}
+                    <div style={{ padding: "8px 12px 10px", borderBottom: "1px solid rgba(255,255,255,0.06)", marginBottom: "4px" }}>
+                      <p style={{ fontSize: "0.7rem", color: "rgba(255,255,255,0.3)", letterSpacing: "1px", marginBottom: "2px" }}>SIGNED IN AS</p>
+                      <p style={{ fontSize: "0.85rem", color: "#fff", fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>
+                        {session?.user?.name || session?.user?.email || "User"}
+                      </p>
+                    </div>
+
+                    {/* Profile link */}
+                    <button
+                      onClick={() => { setDropdownOpen(false); router.push("/profile"); }}
+                      onMouseEnter={() => setHovered("PROFILE")}
+                      onMouseLeave={() => setHovered(null)}
+                      style={{
+                        background: hovered === "PROFILE" ? "rgba(0,255,255,0.08)" : "transparent",
+                        border: "none",
+                        color: hovered === "PROFILE" ? "#00ffff" : "rgba(255,255,255,0.8)",
+                        cursor: "pointer",
+                        padding: "10px 12px",
+                        borderRadius: "10px",
+                        fontSize: "0.88rem",
+                        textAlign: "left",
+                        transition: "all 0.2s ease",
+                        width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
+                        fontWeight: 500,
+                      }}
+                    >
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/>
+                      </svg>
+                      VIEW PROFILE
+                    </button>
+
+                    {/* Logout */}
                     <button
                       onClick={() => signOut()}
                       onMouseEnter={() => setHovered("LOGOUT")}
                       onMouseLeave={() => setHovered(null)}
                       style={{
-                        background: hovered === "LOGOUT" ? "rgba(255, 0, 170, 0.1)" : "transparent",
+                        background: hovered === "LOGOUT" ? "rgba(255, 60, 60, 0.1)" : "transparent",
                         border: "none",
-                        color: hovered === "LOGOUT" ? "#ff00aa" : "#fff",
+                        color: hovered === "LOGOUT" ? "#ff6b6b" : "rgba(255,255,255,0.5)",
                         cursor: "pointer",
                         padding: "10px 12px",
-                        borderRadius: "8px",
-                        fontSize: "0.9rem",
+                        borderRadius: "10px",
+                        fontSize: "0.88rem",
                         textAlign: "left",
                         transition: "all 0.2s ease",
                         width: "100%",
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "10px",
                       }}
                     >
-                      LOGOUT
+                      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/>
+                      </svg>
+                      SIGN OUT
                     </button>
                   </motion.div>
                 )}

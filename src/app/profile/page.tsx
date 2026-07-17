@@ -190,7 +190,7 @@ export default function ProfilePage() {
       overflowX: "hidden",
       position: "relative",
       fontFamily: "Geist, sans-serif",
-      paddingTop: "120px",
+      paddingTop: "180px",
       paddingBottom: "60px",
     }}>
 
@@ -218,15 +218,6 @@ export default function ProfilePage() {
           </motion.div>
         ) : (
           <div key="content-wrapper" style={{ width: "100%", maxWidth: "1000px", margin: "0 auto", zIndex: 1 }}>
-            {/* Page Header */}
-            <motion.div initial={{ opacity: 0, y: -16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.15, duration: 0.5 }} style={{ marginBottom: "32px", textAlign: "center" }}>
-              <h1 style={{ fontSize: "2.4rem", fontWeight: "bold", letterSpacing: "2px", marginBottom: "4px" }}>
-                <GradientText colors={["#F5D76E", "#59ABE3", "#F1828D", "#00ffff"]} animationSpeed={4} showBorder={false}>
-                  MY PROFILE
-                </GradientText>
-              </h1>
-            </motion.div>
-
             <motion.div key="content"
               initial={{ opacity: 0, y: 24 }}
               animate={{ opacity: 1, y: 0 }}
@@ -244,12 +235,6 @@ export default function ProfilePage() {
 
                 {/* Avatar */}
                 <div style={{ position: "relative" }}>
-                  <div style={{
-                    position: "absolute", inset: "-4px", borderRadius: "50%",
-                    background: "linear-gradient(135deg, #00ffff, #d946ef, #2563eb)",
-                    animation: "spin 4s linear infinite",
-                    padding: "2px",
-                  }} />
                   {profile?.image ? (
                     <img src={profile.image} alt="avatar" style={{ width: "100px", height: "100px", borderRadius: "50%", position: "relative", zIndex: 1, border: "3px solid #06001a" }} />
                   ) : (
