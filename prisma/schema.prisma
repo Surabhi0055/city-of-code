@@ -63,6 +63,7 @@ model SavedCity {
   userId    String
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   createdAt DateTime @default(now())
+  isSaved   Boolean  @default(false)
 
   @@unique([userId, url])
 }

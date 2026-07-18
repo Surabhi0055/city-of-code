@@ -39,8 +39,8 @@ export async function POST(req: Request) {
     if (user) {
       await prisma.savedCity.upsert({
         where: { userId_url: { userId: user.id, url } },
-        update: {},
-        create: { userId: user.id, url },
+        update: { createdAt: new Date() },
+        create: { userId: user.id, url, isSaved: false },
       });
     }
 

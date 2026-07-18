@@ -10,6 +10,7 @@ import GradientText from "@/components/ui/GradientText";
 import CyberCity from "@/components/three/CyberCity";
 import CityBuildings from "@/components/three/CityBuildings";
 import InfoPanel from "@/components/three/InfoPanel";
+import CitySidebar from "@/components/ui/CitySidebar";
 import { parseGitHubUrl, fetchRepoData } from "@/lib/github";
 import { fetchFileContent, streamFileExplanation } from "@/lib/ai";
 import { buildCityLayout, BuildingData, RoadData, DistrictData } from "@/lib/cityLayout";
@@ -294,7 +295,7 @@ export default function Home() {
                       Visualize Your Codebase
                     </div>
                     <h1 style={{
-                      fontSize: "6rem",
+                      fontSize: "clamp(3rem, 5vw, 4.5rem)",
                       margin: "0 0 16px 0",
                       paddingBottom: "10px",
                       fontWeight: 900,
@@ -899,6 +900,11 @@ export default function Home() {
             }} />
           )}
         </div>
+        
+        {/* City Sidebar */}
+        {repoInfo && (
+          <CitySidebar currentUrl={url} />
+        )}
         
         {/* AI Info Panel */}
         {repoInfo && (
