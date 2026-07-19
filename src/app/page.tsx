@@ -98,6 +98,9 @@ export default function Home() {
   const searchParams = useSearchParams();
   const urlParam = searchParams.get("url");
   const router = useRouter();
+
+  const [searchQuery, setSearchQuery] = useState("");
+
   const [url, setUrl] = useState(urlParam || "");
   const [buildings, setBuildings] = useState<BuildingData[]>([]);
   const [roads, setRoads] = useState<RoadData[]>([]);
@@ -295,7 +298,7 @@ export default function Home() {
                       Visualize Your Codebase
                     </div>
                     <h1 style={{
-                      fontSize: "clamp(3rem, 5vw, 4.5rem)",
+                      fontSize: "clamp(2.5rem, 4.5vw, 4.5rem)",
                       margin: "0 0 16px 0",
                       paddingBottom: "10px",
                       fontWeight: 900,
@@ -314,10 +317,10 @@ export default function Home() {
                       </GradientText>
                     </h1>
                     <p style={{
-                      fontSize: "1.25rem",
+                      fontSize: "1.15rem",
                       color: "rgba(255, 255, 255, 0.8)",
-                      maxWidth: "600px",
-                      margin: "0 auto",
+                      maxWidth: "800px",
+                      margin: "24px auto 0 auto",
                       lineHeight: "1.6",
                       textShadow: "0 0 10px rgba(255, 255, 255, 0.4)"
                     }}>
@@ -776,7 +779,6 @@ export default function Home() {
                       marginTop: "10px"
                     }}>
                       <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#00ffff"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Home</a>
-                      <a href="#" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#F5D76E"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>About</a>
                       <a href="/projects" style={{ cursor: "pointer", transition: "color 0.3s ease", color: "inherit", textDecoration: "none" }} onMouseOver={(e) => e.currentTarget.style.color = "#ff00cc"} onMouseOut={(e) => e.currentTarget.style.color = "rgba(255,255,255,0.6)"}>Projects</a>
                     </div>
                   </div>
@@ -831,6 +833,64 @@ export default function Home() {
           </div>
         )}
 
+        {/* Search Bar (Visible only when City is loaded) */}
+        {repoInfo && !loading && (
+          <div style={{
+            position: "absolute",
+            top: "30px",
+            left: "50%",
+            transform: "translateX(-50%)",
+            zIndex: 50,
+            width: "90%",
+            maxWidth: "500px",
+            display: "flex",
+            alignItems: "center"
+          }}>
+            <div className="liquid-glass" style={{
+              width: "100%",
+              display: "flex",
+              alignItems: "center",
+              padding: "12px 20px",
+              borderRadius: "30px",
+              background: "rgba(10, 15, 30, 0.7)",
+              border: "1px solid rgba(0, 255, 255, 0.3)",
+              boxShadow: "0 0 20px rgba(0, 255, 255, 0.15)",
+              backdropFilter: "blur(10px)"
+            }}>
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.6)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" style={{ marginRight: "12px" }}>
+                <circle cx="11" cy="11" r="8"></circle>
+                <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+              </svg>
+              <input
+                type="text"
+                placeholder="Search files (e.g., .tsx, api/)"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                style={{
+                  width: "100%",
+                  background: "transparent",
+                  border: "none",
+                  outline: "none",
+                  color: "#fff",
+                  fontSize: "16px",
+                  letterSpacing: "1px"
+                }}
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  style={{ background: "transparent", border: "none", color: "rgba(255,255,255,0.5)", cursor: "pointer", marginLeft: "10px", padding: "4px" }}
+                >
+                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
+                    <line x1="18" y1="6" x2="6" y2="18"></line>
+                    <line x1="6" y1="6" x2="18" y2="18"></line>
+                  </svg>
+                </button>
+              )}
+            </div>
+          </div>
+        )}
+
         {/* 3D Canvas */}
         <div style={{
           position: "absolute",
@@ -881,6 +941,7 @@ export default function Home() {
             <CityBuildings
               buildings={buildings}
               onBuildingClick={handleSelectBuilding}
+              searchQuery={searchQuery}
             />
           </Canvas>
           

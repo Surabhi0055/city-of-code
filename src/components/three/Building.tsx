@@ -8,6 +8,7 @@ import { BuildingData } from "@/lib/cityLayout";
 interface BuildingProps {
   data: BuildingData;
   onClick: (data: BuildingData) => void;
+  searchQuery?: string;
 }
 
 function makeRandom(seed: string) {
@@ -49,6 +50,8 @@ const sparseWinFrag = `
   uniform vec3  uBody;
   uniform float uTime;
   uniform float uHover;
+  uniform float uDimmed;
+  uniform float uMatch;
 
   varying vec2 vUv;
   varying vec3 vNormal;
@@ -58,7 +61,11 @@ const sparseWinFrag = `
   }
 
   void main() {
-    if (abs(vNormal.y) > 0.5) { gl_FragColor = vec4(uBody, 1.0); return; }
+    vec3 bodyColor = uBody;
+    if (uDimmed > 0.5) bodyColor *= 0.15; // Darken body if dimmed
+    if (uMatch > 0.5) bodyColor = mix(bodyColor, vec3(1.0), 0.2); // Lighten body if matched
+
+    if (abs(vNormal.y) > 0.5) { gl_FragColor = vec4(bodyColor, 1.0); return; }
 
     float faceW = abs(vNormal.z) > 0.5 ? uWidth : uDepth;
 
@@ -90,7 +97,7 @@ const sparseWinFrag = `
       float th = hash(tinyCell + uSeed * 2.1);
       
       // 0.8% chance of a tiny white blinking dot in the dark space
-      if (th < 0.008) {
+      if (th < 0.008 && uDimmed < 0.5) {
          if (tinyUv.x > 0.3 && tinyUv.x < 0.7 && tinyUv.y > 0.3 && tinyUv.y < 0.7) {
             float blink = step(0.5, sin(uTime * 8.0 + th * 20.0));
             gl_FragColor = vec4(vec3(1.0) * blink, 1.0);
@@ -98,7 +105,7 @@ const sparseWinFrag = `
          }
       }
       
-      gl_FragColor = vec4(uBody, 1.0); 
+      gl_FragColor = vec4(bodyColor, 1.0); 
       return; 
     }
 
@@ -124,7 +131,7 @@ const sparseWinFrag = `
     bool inWin = cellUv.x > brdX && cellUv.x < (1.0 - brdX)
               && cellUv.y > brdY && cellUv.y < (1.0 - brdY);
 
-    if (!inWin) { gl_FragColor = vec4(uBody, 1.0); return; }
+    if (!inWin) { gl_FragColor = vec4(bodyColor, 1.0); return; }
 
     // ── Brightness gradient: bright at top + bottom, dimmer in middle ──────
     float posY        = vUv.y;
@@ -144,6 +151,9 @@ const sparseWinFrag = `
       winColor = uWinNeon * lumBoost;
     }
     winColor *= brightFactor;
+
+    if (uDimmed > 0.5) winColor *= 0.15; // Darken windows if dimmed
+    if (uMatch > 0.5) winColor *= 2.0;   // Brighten windows if matched
 
     gl_FragColor = vec4(winColor, 1.0);
   }
@@ -415,7 +425,7 @@ function SlopedPeak({ baseW, baseD, body, color, startY }: {
 }
 
 // ── Main building ─────────────────────────────────────────────────────────────
-function BuildingComponent({ data, onClick }: BuildingProps) {
+function BuildingComponent({ data, onClick, searchQuery }: BuildingProps) {
   const [hovered, setHovered] = useState(false);
   const rand = makeRandom(data.id);
   const seedVal = useMemo(() => { let s = 0; for (let i = 0; i < data.id.length; i++) s += data.id.charCodeAt(i); return (s % 997) + 1; }, [data.id]);
@@ -520,18 +530,27 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
     return new THREE.Vector3(c.r, c.g, c.b);
   }, [isRedColor, data.emissiveColor]);
 
+  const isSearchActive = !!searchQuery && searchQuery.trim().length > 0;
+  const isMatch = isSearchActive && data.filePath && data.filePath.toLowerCase().includes(searchQuery.toLowerCase());
+  const isDimmed = isSearchActive && !isMatch;
+  const opacityMultiplier = isDimmed ? 0.15 : 1.0;
+
   const baseUniforms = useMemo(() => ({
     uWinTint: { value: winTintVec }, uWinNeon: { value: winNeonVec }, uNeon: { value: neonVec }, uSeed: { value: seedVal },
     uWidth: { value: data.width }, uHeight: { value: baseH }, uDepth: { value: data.depth }, uBody: { value: bodyVec },
     uTime: { value: 0 },
-    uHover: { value: 0 }
+    uHover: { value: 0 },
+    uDimmed: { value: 0 },
+    uMatch: { value: 0 }
   }), [winTintVec, winNeonVec, neonVec, seedVal, data.width, baseH, data.depth, bodyVec]);
 
   const topUniforms = useMemo(() => ({
     uWinTint: { value: winTintVec }, uWinNeon: { value: winNeonVec }, uNeon: { value: neonVec }, uSeed: { value: seedVal + 31 },
     uWidth: { value: topW }, uHeight: { value: topH }, uDepth: { value: topD }, uBody: { value: bodyVec },
     uTime: { value: 0 },
-    uHover: { value: 0 }
+    uHover: { value: 0 },
+    uDimmed: { value: 0 },
+    uMatch: { value: 0 }
   }), [winTintVec, winNeonVec, neonVec, seedVal, topW, topH, topD, bodyVec]);
   
   useFrame(({ clock }) => {
@@ -541,15 +560,21 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
 
   React.useEffect(() => {
     baseUniforms.uHover.value = hovered ? 1.0 : 0.0;
-    if (topUniforms) topUniforms.uHover.value = hovered ? 1.0 : 0.0;
-  }, [hovered, baseUniforms, topUniforms]);
+    baseUniforms.uDimmed.value = isDimmed ? 1.0 : 0.0;
+    baseUniforms.uMatch.value = isMatch ? 1.0 : 0.0;
+    if (topUniforms) {
+      topUniforms.uHover.value = hovered ? 1.0 : 0.0;
+      topUniforms.uDimmed.value = isDimmed ? 1.0 : 0.0;
+      topUniforms.uMatch.value = isMatch ? 1.0 : 0.0;
+    }
+  }, [hovered, isDimmed, isMatch, baseUniforms, topUniforms]);
 
-  const bodyHex     = useMemo(() => tintedBody(data.emissiveColor), [data.emissiveColor]);
-  const edgeColor   = hovered ? "#ffffff" : data.emissiveColor;
-  const edgeOpacity = hovered ? 1.0 : 0.80;
+  const bodyHex     = useMemo(() => isDimmed ? "#050505" : (isMatch ? "#ffffff" : tintedBody(data.emissiveColor)), [data.emissiveColor, isDimmed, isMatch]);
+  const edgeColor   = hovered || isMatch ? "#ffffff" : (isDimmed ? "#111111" : data.emissiveColor);
+  const edgeOpacity = (hovered || isMatch ? 1.0 : 0.80) * opacityMultiplier;
 
   // Use the bright district base color for the straight neon strips
-  const stripColor = hovered ? "#ffffff" : data.emissiveColor;
+  const stripColor = hovered || isMatch ? "#ffffff" : (isDimmed ? "#000000" : data.emissiveColor);
 
   const bands = useMemo(() => {
     if (style.bandCount === 0) return [];
@@ -578,12 +603,12 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
         {/* Wireframe edges removed for cleaner single-line look */}
         {bands.map((y, i) => (
           <NeonBand key={i} w={data.width + 0.05} d={data.depth + 0.05} y={y} color={stripColor}
-            opacity={style.archetype === 3 ? 0.95 : 0.78} />
+            opacity={(style.archetype === 3 ? 0.95 : 0.78) * opacityMultiplier} />
         ))}
         {vStripXs.map((x, i) => (
           <VStrip key={i} x={x} z={data.depth / 2 + 0.02} rot={0} height={baseH} color={stripColor} />
         ))}
-        {style.signBoards.map((b) => (
+        {!isDimmed && style.signBoards.map((b) => (
           <SignBoard key={b.id} w={data.width} d={data.depth} h={baseH} side={b.side} heightFactor={b.lenFactor} yOffset={b.yOffset} color={b.color} borderColor={b.borderColor} seed={seedVal + b.id * 10} />
         ))}
       </group>
@@ -594,7 +619,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
           baseW={data.width}
           baseD={data.depth}
           body={bodyHex}
-          color={data.emissiveColor}
+          color={stripColor}
           layers={style.crownLayers}
           startY={baseH}
         />
@@ -604,7 +629,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
           baseW={data.width}
           baseD={data.depth}
           body={bodyHex}
-          color={data.emissiveColor}
+          color={stripColor}
           startY={baseH}
         />
       )}
@@ -613,7 +638,7 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
           baseW={data.width}
           baseD={data.depth}
           body={bodyHex}
-          color={data.emissiveColor}
+          color={stripColor}
           startY={baseH}
         />
       )}
@@ -625,18 +650,26 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
             <shaderMaterial vertexShader={sparseWinVert} fragmentShader={sparseWinFrag} uniforms={topUniforms} toneMapped={false} />
           </mesh>
           {/* Wireframe edges removed */}
-          <NeonBand w={topW + 0.05} d={topD + 0.05} y={-topH / 2} color={stripColor} opacity={0.95} />
-          <NeonBand w={topW + 0.05} d={topD + 0.05} y={ topH / 2} color={stripColor} opacity={0.95} />
+          <NeonBand w={topW + 0.05} d={topD + 0.05} y={-topH / 2} color={stripColor} opacity={0.95 * opacityMultiplier} />
+          <NeonBand w={topW + 0.05} d={topD + 0.05} y={ topH / 2} color={stripColor} opacity={0.95 * opacityMultiplier} />
         </group>
       )}
 
       {/* ── Base glow band ── */}
       <NeonBand w={data.width + 0.08} d={data.depth + 0.08} y={0.28}
-        color={data.emissiveColor} opacity={hovered ? 1.0 : 0.55} />
+        color={data.emissiveColor} opacity={(hovered || isMatch ? 1.0 : 0.55) * opacityMultiplier} />
 
       {/* ── Rooftop crown ring ── */}
       <NeonBand w={data.width + 0.04} d={data.depth + 0.04} y={baseH}
-        color={data.emissiveColor} opacity={hovered ? 1.0 : 0.60} />
+        color={data.emissiveColor} opacity={(hovered || isMatch ? 1.0 : 0.60) * opacityMultiplier} />
+
+      {/* ── Match Glow Indicator ── */}
+      {isMatch && (
+        <mesh position={[0, baseH + 1.0, 0]}>
+          <boxGeometry args={[data.width + 0.2, baseH + 2.0, data.depth + 0.2]} />
+          <meshBasicMaterial color="#ffffff" transparent opacity={0.2} blending={THREE.AdditiveBlending} depthWrite={false} />
+        </mesh>
+      )}
 
       {/* ── Antenna spire with blurred glow halos ── */}
       {style.hasAntenna && (
@@ -656,27 +689,29 @@ function BuildingComponent({ data, onClick }: BuildingProps) {
           {/* Outer soft halo — largest, very transparent */}
           <mesh position={[0, style.antennaH, 0]}>
             <sphereGeometry args={[2.2, 8, 8]} />
-            <meshBasicMaterial color={data.emissiveColor} toneMapped={false} transparent opacity={0.028}
+            <meshBasicMaterial color={stripColor} toneMapped={false} transparent opacity={0.028 * opacityMultiplier}
               blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
           {/* Mid halo */}
           <mesh position={[0, style.antennaH, 0]}>
             <sphereGeometry args={[1.1, 8, 8]} />
-            <meshBasicMaterial color={data.emissiveColor} toneMapped={false} transparent opacity={0.055}
+            <meshBasicMaterial color={stripColor} toneMapped={false} transparent opacity={0.055 * opacityMultiplier}
               blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
           {/* Inner halo */}
           <mesh position={[0, style.antennaH, 0]}>
             <sphereGeometry args={[0.45, 8, 8]} />
-            <meshBasicMaterial color={data.emissiveColor} toneMapped={false} transparent opacity={0.13}
+            <meshBasicMaterial color={stripColor} toneMapped={false} transparent opacity={0.13 * opacityMultiplier}
               blending={THREE.AdditiveBlending} depthWrite={false} />
           </mesh>
           {/* Bright core beacon (pulsing) */}
-          <Beacon color={data.emissiveColor} y={style.antennaH} />
+          <Beacon color={stripColor} y={style.antennaH} />
         </group>
       )}
     </group>
   );
 }
 
-export default React.memo(BuildingComponent, (prev, next) => prev.data.id === next.data.id);
+export default React.memo(BuildingComponent, (prev, next) => 
+  prev.data.id === next.data.id && prev.searchQuery === next.searchQuery
+);

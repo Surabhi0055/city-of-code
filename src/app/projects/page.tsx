@@ -172,22 +172,10 @@ export default function ProjectsPage() {
         ) : (
           <div key="content" style={{ width: "100%", maxWidth: "1200px", margin: "0 auto", padding: "0 24px", zIndex: 1, position: "relative" }}>
             
-            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ marginBottom: "60px", textAlign: "center" }}>
-              <h1 style={{ 
-                fontSize: "6rem", 
-                margin: "0 0 16px 0",
-                paddingBottom: "10px",
-                fontWeight: 300,
-                lineHeight: "1.2",
-                letterSpacing: "0.5px"
-              }}>
-                <GradientText colors={["#F5D76E", "#59ABE3", "#F1828D", "#00ffff"]} animationSpeed={4} showBorder={false}>
-                  SAVED CITIES
-                </GradientText>
+            <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} style={{ marginBottom: "40px", textAlign: "left" }}>
+              <h1 style={{ fontSize: "2rem", fontWeight: "bold", color: "#FFFFFF", letterSpacing: "2px", margin: 0 }}>
+                SAVED CITIES
               </h1>
-              <p style={{ color: "rgba(255,255,255,0.6)", fontSize: "1.25rem", textShadow: "0 0 10px rgba(255, 255, 255, 0.4)" }}>
-                Select a repository to rebuild its codebase city.
-              </p>
             </motion.div>
 
             {cities.length === 0 ? (
@@ -225,7 +213,7 @@ export default function ProjectsPage() {
 
                 {/* History Section */}
                 <div>
-                  <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "rgba(255,255,255,0.5)", marginBottom: "24px", letterSpacing: "2px", marginTop: savedProjects.length > 0 ? "20px" : "0" }}>RECENT HISTORY</h2>
+                  <h2 style={{ fontSize: "1.5rem", fontWeight: "bold", color: "#FFFFFF", marginBottom: "24px", letterSpacing: "2px", marginTop: savedProjects.length > 0 ? "20px" : "0" }}>RECENT HISTORY</h2>
                   {history.length > 0 ? (
                     <div style={{
                       display: "grid",

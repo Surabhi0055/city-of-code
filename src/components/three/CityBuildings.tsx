@@ -6,9 +6,10 @@ import Building from "./Building";
 interface CityBuildingsProps {
   buildings: BuildingData[];
   onBuildingClick: (data: BuildingData) => void;
+  searchQuery?: string;
 }
 
-export default function CityBuildings({ buildings, onBuildingClick }: CityBuildingsProps) {
+export default function CityBuildings({ buildings, onBuildingClick, searchQuery }: CityBuildingsProps) {
   return (
     <>
       {buildings.map((building) => (
@@ -16,6 +17,7 @@ export default function CityBuildings({ buildings, onBuildingClick }: CityBuildi
           key={building.id}
           data={building}
           onClick={onBuildingClick}
+          searchQuery={searchQuery}
         />
       ))}
     </>
