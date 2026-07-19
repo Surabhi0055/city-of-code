@@ -39,10 +39,19 @@ export default function Navbar() {
   const [logoHovered, setLogoHovered] = useState(false);
   const [hidden, setHidden] = useState(false);
   const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [cityViewActive, setCityViewActive] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { data: session } = useSession();
   const pathname = usePathname();
   const router = useRouter();
+
+  useEffect(() => {
+    const handleCityView = (e: Event) => {
+      setCityViewActive((e as CustomEvent).detail.active);
+    };
+    window.addEventListener("city-view-toggle", handleCityView);
+    return () => window.removeEventListener("city-view-toggle", handleCityView);
+  }, []);
 
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
@@ -78,8 +87,9 @@ export default function Navbar() {
 
   return (
     <AnimatePresence>
-      {!hidden && (
+      {(!hidden && !cityViewActive) && (
         <motion.div
+          id="main-navbar"
           initial={{ opacity: 0, y: -30 }}
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -30 }}

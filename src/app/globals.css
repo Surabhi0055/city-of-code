@@ -295,3 +295,7 @@ h1 .hover-char:hover {
   pointer-events: none;
   z-index: 1;
 }
+
+body.city-view #main-navbar {
+  display: none !important;
+}

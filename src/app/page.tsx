@@ -131,6 +131,21 @@ export default function Home() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session, urlParam]);
 
+  // Toggle city-view class to hide navbar in cityscape
+  useEffect(() => {
+    if (repoInfo) {
+      document.body.classList.add("city-view");
+      window.dispatchEvent(new CustomEvent("city-view-toggle", { detail: { active: true } }));
+    } else {
+      document.body.classList.remove("city-view");
+      window.dispatchEvent(new CustomEvent("city-view-toggle", { detail: { active: false } }));
+    }
+    return () => {
+      document.body.classList.remove("city-view");
+      window.dispatchEvent(new CustomEvent("city-view-toggle", { detail: { active: false } }));
+    };
+  }, [repoInfo]);
+
   async function handleGenerate(targetUrl?: string) {
     const urlToUse = targetUrl || url;
     const parsed = parseGitHubUrl(urlToUse);
@@ -176,12 +191,21 @@ export default function Home() {
   }
 
   // Called when a building is clicked in 3D
-  const handleSelectBuilding = useCallback((data: BuildingData) => {
+  const handleSelectBuilding = useCallback(async (data: BuildingData) => {
     setSelectedBuilding(data);
     setExplanation("");
     setFileCode("");
     setIsAnalyzing(false);
-  }, []);
+
+    if (!repoInfo) return;
+    try {
+      const content = await fetchFileContent(repoInfo.owner, repoInfo.repo, data.filePath);
+      setFileCode(content);
+    } catch (err) {
+      console.error("Failed to fetch file content", err);
+      // We don't fail loudly here, just leave fileCode empty
+    }
+  }, [repoInfo]);
 
   // Called when "Analyze ->" is clicked on the info panel
   const handleBuildingClick = useCallback(
@@ -189,24 +213,25 @@ export default function Home() {
       if (!repoInfo) return;
 
       setExplanation("");
-      setFileCode("");
       setIsAnalyzing(true);
 
-      try {
-        // 1. Fetch the actual file content from GitHub
-        const content = await fetchFileContent(
-          repoInfo.owner,
-          repoInfo.repo,
-          data.filePath
-        );
-        setFileCode(content);
+      // If fileCode is empty, try to fetch it now, otherwise use existing
+      let currentFileCode = fileCode;
+      if (!currentFileCode) {
+        try {
+          currentFileCode = await fetchFileContent(repoInfo.owner, repoInfo.repo, data.filePath);
+          setFileCode(currentFileCode);
+        } catch (err) {
+          console.error(err);
+        }
+      }
 
-        // 2. Stream Claude's explanation word by word
+      try {
+        // Stream Claude's explanation word by word
         await streamFileExplanation(
           data.fileName,
-          content,
+          currentFileCode,
           (chunk: string) => {
-            // Append each chunk to explanation as it streams
             setExplanation((prev) => prev + chunk);
           },
           () => {
@@ -221,7 +246,7 @@ export default function Home() {
         setIsAnalyzing(false);
       }
     },
-    [repoInfo]
+    [repoInfo, fileCode]
   );
 
   function handleClosePanel() {
